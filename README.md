@@ -31,12 +31,21 @@ python3 -m http.server 4321
 | **The Chain** | Edit Block #0's data → blocks turn red → hit *Re-mine* → cascade repairs |
 | **Signatures** | Generate → Sign → Verify (valid) → change the message → Verify (tamper caught) |
 | **Merkle Trees** | Click a transaction → see the O(log n) proof path |
-| **Consensus** | Run the PoW race (hash power = odds), then the PoS weighted lottery |
+| **Consensus — 6 labs (the centerpiece)** | Build it ground-up, in order: |
+| &nbsp;&nbsp;① Double-spend | Pay Bob, then pay Carol the *same* coin → both signatures valid → why a bank-less network needs consensus |
+| &nbsp;&nbsp;② Mining puzzle | Mash "Try +1 nonce" to feel the difficulty, then "Auto-mine" → watch the hashrate, find a golden nonce. Crank difficulty to show 16× scaling |
+| &nbsp;&nbsp;③ Mining race | Set hash-power sliders → "Simulate 100 blocks" → reward share converges to hash-power share |
+| &nbsp;&nbsp;④ Forks | "Two miners find block #3 at once" → click a branch to extend → the loser is orphaned (longest-chain rule = why confirmations) |
+| &nbsp;&nbsp;⑤ 51% attack | Set your hash power + confirmations → live probability (real Satoshi whitepaper formula). "Launch attack" runs a stochastic race. Push q past 50% → guaranteed |
+| &nbsp;&nbsp;⑥ PoS & slashing | Run blocks weighted by stake, then "Make Val B sign a fraudulent block" → watch its bond get slashed |
 | **Trilemma** | Drag the point toward a corner → the other two shrink |
 | **TPS** | Bars animate Bitcoin (7) vs Ethereum (25) vs Visa (24,000) |
 | **Policy** | Toggle India / US / EU → table highlights that column |
 | **ZKP** | Run rounds as HONEST, then flip to CHEATER → exposed |
 | **Bridges** | Bridge ETH (lock→mint), then "Simulate exploit" → the $2.5B failure mode |
+
+> The 51% attack probability is computed with Nakamoto's exact formula from §11 of the Bitcoin
+> whitepaper — verified against the paper's own published values (q=0.1, z=3 → 0.0132, etc.).
 
 ## Structure
 

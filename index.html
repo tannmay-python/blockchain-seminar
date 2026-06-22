@@ -40,8 +40,8 @@
       <div class="card"><div class="ic">🔎</div><h3>Transparent</h3><p>Any participant can independently verify the entire ledger.</p></div>
     </div>
     <div class="panel reveal mt" style="margin-top:26px">
-      <div class="demo-label">Live · Consensus across nodes</div>
-      <p class="note mb">A transaction broadcasts to the network. Watch it propagate and every node converge on the same state. Click <em>Broadcast</em>.</p>
+      <div class="demo-label">Live · One ledger, copied everywhere</div>
+      <p class="note mb">There is no central server. Every node stores the full ledger. When a transaction is broadcast, it ripples out until all nodes hold an identical copy. Click <em>Broadcast</em> and watch it propagate. <span style="color:var(--gold)">But what happens when two nodes disagree? That problem is what the Consensus labs below solve.</span></p>
       <div id="networkDemo"></div>
     </div>
   </section>
@@ -98,22 +98,57 @@
     </div>
   </section>
 
-  <!-- Consensus -->
-  <section class="section wide" data-dot="Consensus">
-    <div class="eyebrow reveal">Consensus Mechanisms</div>
-    <h2 class="reveal">How strangers agree without a boss</h2>
-    <p class="reveal lead">Consensus is how nodes agree on the true state of the ledger with no central authority. The two dominant approaches make opposite bets on what is scarce: <strong>computation</strong> vs. <strong>capital</strong>.</p>
-    <div class="grid-2 reveal mt">
-      <div class="panel">
-        <div class="demo-label">Live · Proof of Work — the mining race</div>
-        <p class="note mb">Four miners race to find a nonce whose block hash starts with the target zeros. More hash power = more guesses/sec = better odds. Winner takes the block.</p>
-        <div id="powDemo"></div>
-      </div>
-      <div class="panel">
-        <div class="demo-label">Live · Proof of Stake — weighted lottery</div>
-        <p class="note mb">No racing. A validator is chosen at random, weighted by stake. Adjust the stakes and run the lottery — 99% less energy. Ethereum switched in 2022 (The Merge).</p>
-        <div id="posDemo"></div>
-      </div>
+  <!-- ===== CONSENSUS — ground-up chapter ===== -->
+  <section class="section" data-dot="Consensus">
+    <div class="eyebrow reveal">Consensus Mechanisms · Built From Scratch</div>
+    <h2 class="reveal">How do strangers agree, with no boss?</h2>
+    <p class="reveal lead">This is the hardest and most important idea in blockchain — so we'll build it up in six hands-on labs. Start with the <strong>problem</strong> that makes consensus necessary, then construct <strong>Proof of Work</strong> one mechanism at a time, attack it, and finish with its modern rival, <strong>Proof of Stake</strong>. Touch everything.</p>
+    <div class="grid-3 reveal mt">
+      <div class="card"><div class="ic">①②</div><h3>The problem</h3><p>Double-spending — why a shared ledger needs agreement at all.</p></div>
+      <div class="card"><div class="ic">⛏</div><h3>Build PoW</h3><p>The mining puzzle, the hash-power race, forks, and the longest-chain rule.</p></div>
+      <div class="card"><div class="ic">☠</div><h3>Break &amp; compare</h3><p>Run a 51% attack with real probability math, then meet Proof of Stake.</p></div>
+    </div>
+  </section>
+
+  <section class="section wide" data-dot="① Double-Spend">
+    <div class="lab reveal">
+      <div class="lab-head"><div class="lab-badge">1</div><div><h3>The Double-Spend Problem</h3><p class="sub">Why consensus has to exist</p></div></div>
+      <div class="lab-body"><div id="labDoubleSpend"></div></div>
+    </div>
+  </section>
+
+  <section class="section wide" data-dot="② Mining Puzzle">
+    <div class="lab reveal">
+      <div class="lab-head"><div class="lab-badge">2</div><div><h3>The Mining Puzzle</h3><p class="sub">Proof of Work, by hand — find a golden nonce</p></div></div>
+      <div class="lab-body"><div id="labPuzzle"></div></div>
+    </div>
+  </section>
+
+  <section class="section wide" data-dot="③ Mining Race">
+    <div class="lab reveal">
+      <div class="lab-head"><div class="lab-badge">3</div><div><h3>The Mining Race</h3><p class="sub">Hash power = win probability</p></div></div>
+      <div class="lab-body"><div id="labRace"></div></div>
+    </div>
+  </section>
+
+  <section class="section wide" data-dot="④ Forks">
+    <div class="lab reveal">
+      <div class="lab-head"><div class="lab-badge">4</div><div><h3>Forks &amp; the Longest-Chain Rule</h3><p class="sub">Why you wait for confirmations</p></div></div>
+      <div class="lab-body"><div id="labFork"></div></div>
+    </div>
+  </section>
+
+  <section class="section wide" data-dot="⑤ 51% Attack">
+    <div class="lab reveal">
+      <div class="lab-head"><div class="lab-badge">5</div><div><h3>The 51% Attack Game</h3><p class="sub">Race a secret chain — with the Bitcoin whitepaper's own math</p></div></div>
+      <div class="lab-body"><div id="labAttack"></div></div>
+    </div>
+  </section>
+
+  <section class="section wide" data-dot="⑥ PoS & Slashing">
+    <div class="lab reveal">
+      <div class="lab-head"><div class="lab-badge">6</div><div><h3>Proof of Stake &amp; Slashing</h3><p class="sub">Burn capital, not electricity</p></div></div>
+      <div class="lab-body"><div id="labPos"></div></div>
     </div>
     <div class="grid-3 reveal mt">
       <div class="card"><h3>PoW</h3><p>Spend electricity to earn the right to write. Secure, battle-tested, energy-hungry. <span class="pill go">Bitcoin</span></p></div>
@@ -301,6 +336,7 @@
 
   <script src="js/sha256.js"></script>
   <script src="js/demos.js"></script>
+  <script src="js/labs.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
