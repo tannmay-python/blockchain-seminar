@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blockchain — A Technical &amp; Policy Primer · Interactive Seminar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="progress"></div>
+  <nav id="dots"></nav>
+
+  <!-- ========================= HERO ========================= -->
+  <header id="hero" data-dot="Intro">
+    <div class="hero-chain" id="heroChain"></div>
+    <h1>Blockchain</h1>
+    <div class="sub">A Technical &amp; Policy Primer</div>
+    <div class="tagline">SCROLL TO EXPLORE · EVERYTHING HERE IS LIVE &amp; INTERACTIVE</div>
+    <div class="scroll-hint">↓ SCROLL</div>
+  </header>
+
+  <!-- ========================= PART I ========================= -->
+  <section class="section part-divider" data-dot="Part I">
+    <div class="num reveal">01</div>
+    <h2 class="reveal">The Technology</h2>
+    <p class="reveal lead">From a single hash to a tamper-evident global ledger. We'll build the machine piece by piece — and you can touch every part.</p>
+  </section>
+
+  <!-- What is a blockchain -->
+  <section class="section" data-dot="What is it">
+    <div class="eyebrow reveal">Definition</div>
+    <h2 class="reveal">What is a blockchain?</h2>
+    <p class="reveal lead">A blockchain is a <strong>distributed ledger</strong> — a database shared and synchronized across many computers, with no central authority. Records are grouped into <strong>blocks</strong>, each carrying a cryptographic hash of the previous block. That chaining makes the past <strong>tamper-evident</strong>.</p>
+    <div class="grid-3 reveal mt">
+      <div class="card"><div class="ic">🌐</div><h3>Distributed</h3><p>No single point of failure or control. Every node keeps a copy.</p></div>
+      <div class="card"><div class="ic">🔒</div><h3>Immutable</h3><p>Altering one past block invalidates every block that follows it.</p></div>
+      <div class="card"><div class="ic">🔎</div><h3>Transparent</h3><p>Any participant can independently verify the entire ledger.</p></div>
+    </div>
+    <div class="panel reveal mt" style="margin-top:26px">
+      <div class="demo-label">Live · Consensus across nodes</div>
+      <p class="note mb">A transaction broadcasts to the network. Watch it propagate and every node converge on the same state. Click <em>Broadcast</em>.</p>
+      <div id="networkDemo"></div>
+    </div>
+  </section>
+
+  <!-- Data structure / hash playground -->
+  <section class="section" data-dot="Hashing">
+    <div class="eyebrow reveal">Cryptographic Foundations</div>
+    <h2 class="reveal">The hash function — the atom of the chain</h2>
+    <p class="reveal lead"><strong>SHA-256</strong> takes any input and returns a fixed 256-bit fingerprint. It is deterministic, one-way, and exhibits the <strong>avalanche effect</strong>: flip a single character and roughly half the output bits change. Type below — this runs a real SHA-256 in your browser.</p>
+    <div class="panel reveal mt">
+      <div class="demo-label">Live · SHA-256 playground</div>
+      <div id="hashPlayground"></div>
+    </div>
+  </section>
+
+  <!-- Block anatomy + interactive chain -->
+  <section class="section wide" data-dot="The Chain">
+    <div class="eyebrow reveal">Data Structure</div>
+    <h2 class="reveal">Why "chain"? Tamper with it and find out.</h2>
+    <p class="reveal lead">Each block contains <strong>data</strong>, its own <strong>hash</strong>, the <strong>previous block's hash</strong>, and a <strong>nonce</strong>. Edit any block's data below — its hash changes, which breaks its link to the next block, cascading down the chain. Then <strong>re-mine</strong> to find a nonce that satisfies the difficulty rule (hash must start with <span class="mono" style="color:var(--gold)">0000</span>).</p>
+    <div class="panel reveal mt">
+      <div class="demo-label">Live · Build &amp; break a blockchain</div>
+      <div class="flex gap wrap mb" style="align-items:center">
+        <span class="note">Difficulty (leading zeros):</span>
+        <input type="range" id="diffSlider" min="1" max="4" value="3" style="width:160px" />
+        <span class="mono" id="diffLabel" style="color:var(--gold)">3</span>
+        <button class="btn ghost" id="mineAll">⛏ Mine all blocks</button>
+        <button class="btn ghost" id="addBlock">+ Add block</button>
+      </div>
+      <div class="chain" id="chainDemo"></div>
+      <p class="note">A green border = valid (its stored prev-hash matches reality and it meets difficulty). Red = broken. To rewrite history, an attacker must out-mine the honest network on <em>every</em> following block — on Bitcoin, computationally infeasible.</p>
+    </div>
+  </section>
+
+  <!-- Public key crypto / signatures -->
+  <section class="section" data-dot="Signatures">
+    <div class="eyebrow reveal">Cryptographic Foundations</div>
+    <h2 class="reveal">Who owns what: public-key signatures</h2>
+    <p class="reveal lead">Each participant holds a <strong>private key</strong> (secret) and a <strong>public key</strong> (shared). You sign a transaction with the private key; anyone verifies it with the public key — without ever learning your secret. This is the basis of wallet ownership. Try signing, then tamper with the message.</p>
+    <div class="panel reveal mt">
+      <div class="demo-label">Live · Sign &amp; verify</div>
+      <div id="sigDemo"></div>
+    </div>
+  </section>
+
+  <!-- Merkle trees -->
+  <section class="section" data-dot="Merkle Trees">
+    <div class="eyebrow reveal">Cryptographic Foundations</div>
+    <h2 class="reveal">Merkle trees — verify one transaction, trust the whole block</h2>
+    <p class="reveal lead">Transactions are hashed pairwise up a tree to a single <strong>Merkle root</strong>. To prove a transaction is in a block, you don't need the whole block — only a handful of sibling hashes along the path to the root. Click any transaction to see its <strong>Merkle proof</strong>.</p>
+    <div class="panel reveal mt">
+      <div class="demo-label">Live · Merkle tree &amp; proof</div>
+      <div id="merkleDemo"></div>
+    </div>
+  </section>
+
+  <!-- Consensus -->
+  <section class="section wide" data-dot="Consensus">
+    <div class="eyebrow reveal">Consensus Mechanisms</div>
+    <h2 class="reveal">How strangers agree without a boss</h2>
+    <p class="reveal lead">Consensus is how nodes agree on the true state of the ledger with no central authority. The two dominant approaches make opposite bets on what is scarce: <strong>computation</strong> vs. <strong>capital</strong>.</p>
+    <div class="grid-2 reveal mt">
+      <div class="panel">
+        <div class="demo-label">Live · Proof of Work — the mining race</div>
+        <p class="note mb">Four miners race to find a nonce whose block hash starts with the target zeros. More hash power = more guesses/sec = better odds. Winner takes the block.</p>
+        <div id="powDemo"></div>
+      </div>
+      <div class="panel">
+        <div class="demo-label">Live · Proof of Stake — weighted lottery</div>
+        <p class="note mb">No racing. A validator is chosen at random, weighted by stake. Adjust the stakes and run the lottery — 99% less energy. Ethereum switched in 2022 (The Merge).</p>
+        <div id="posDemo"></div>
+      </div>
+    </div>
+    <div class="grid-3 reveal mt">
+      <div class="card"><h3>PoW</h3><p>Spend electricity to earn the right to write. Secure, battle-tested, energy-hungry. <span class="pill go">Bitcoin</span></p></div>
+      <div class="card"><h3>PoS</h3><p>Lock capital as collateral; misbehave and it's slashed. <span class="pill vi">Ethereum</span></p></div>
+      <div class="card"><h3>Other</h3><p>Delegated PoS, Proof of Authority (enterprise), BFT (Tendermint, PBFT). Each trades off speed, decentralization, security.</p></div>
+    </div>
+  </section>
+
+  <!-- Network types -->
+  <section class="section" data-dot="Network Types">
+    <div class="eyebrow reveal">Blockchain Networks</div>
+    <h2 class="reveal">Public, private, or consortium?</h2>
+    <p class="reveal lead">The right design depends on trust, throughput, regulation, and whether participants know each other. Hover to compare.</p>
+    <div class="grid-3 reveal mt">
+      <div class="card"><div class="ic">🌍</div><h3>Public</h3><p><strong>Permissionless.</strong> Anyone reads, writes, participates. Fully decentralized, high security, lower throughput.</p><p class="mt-s"><span class="pill cy">Bitcoin</span> <span class="pill cy">Ethereum</span></p></div>
+      <div class="card"><div class="ic">🏢</div><h3>Private</h3><p><strong>Permissioned.</strong> One org controls access. Faster, more private.</p><p class="mt-s"><span class="pill">Hyperledger Fabric</span></p></div>
+      <div class="card"><div class="ic">🤝</div><h3>Consortium</h3><p><strong>Semi-decentralized.</strong> Governed by a group of organizations. Balances openness with control.</p><p class="mt-s"><span class="pill">R3 Corda</span> <span class="pill">Quorum</span></p></div>
+    </div>
+  </section>
+
+  <!-- Smart contracts -->
+  <section class="section" data-dot="Smart Contracts">
+    <div class="eyebrow reveal">Programmability</div>
+    <h2 class="reveal">Smart contracts — code that is the intermediary</h2>
+    <p class="reveal lead">Self-executing programs stored on-chain that run automatically when conditions are met, with no middleman. Proposed by Nick Szabo (1994), realized by Ethereum (2015). Here's a tiny one — a vending machine. Send the exact price and it dispenses; send too little and it reverts.</p>
+    <div class="grid-2 reveal mt">
+      <div class="panel">
+        <div class="demo-label">Live · A Solidity-style contract, simulated</div>
+        <div id="contractDemo"></div>
+      </div>
+      <div class="panel">
+        <div class="demo-label">What they unlock</div>
+        <div class="grid-2" style="gap:12px">
+          <div class="card"><h3>DeFi</h3><p>Lend, borrow, trade without banks.</p></div>
+          <div class="card"><h3>NFTs</h3><p>Provable ownership of digital assets.</p></div>
+          <div class="card"><h3>DAOs</h3><p>Organizations run by code &amp; token votes.</p></div>
+          <div class="card"><h3>Supply chain</h3><p>Auto-pay on confirmed delivery.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trilemma + scalability -->
+  <section class="section wide" data-dot="Trilemma">
+    <div class="eyebrow reveal">Scalability Challenges</div>
+    <h2 class="reveal">The Blockchain Trilemma</h2>
+    <p class="reveal lead">Vitalik Buterin's framing: it's very hard to maximize <strong>decentralization</strong>, <strong>security</strong>, and <strong>scalability</strong> at once. Drag the point — pull toward any corner and watch the others give.</p>
+    <div class="panel reveal mt">
+      <div class="demo-label">Live · Drag the tradeoff</div>
+      <div class="trilemma-wrap">
+        <div id="trilemmaSvg"></div>
+        <div id="trilemmaReadout"></div>
+      </div>
+    </div>
+    <div class="panel reveal mt">
+      <div class="demo-label">Live · Throughput reality check (TPS)</div>
+      <p class="note mb">Why scaling matters. Bars animate to real-world transactions-per-second.</p>
+      <div id="tpsDemo"></div>
+      <p class="note mt">Solutions in flight: <strong>Layer-2 rollups</strong> (batch off-chain), <strong>sharding</strong> (parallel lanes), <strong>state channels</strong> (settle bilaterally on-chain).</p>
+    </div>
+  </section>
+
+  <!-- ========================= PART II ========================= -->
+  <section class="section part-divider" data-dot="Part II">
+    <div class="num reveal">02</div>
+    <h2 class="reveal">Global Policy Landscape</h2>
+    <p class="reveal lead">The same technology, three very different regulatory bets. India, the United States, and the European Union.</p>
+  </section>
+
+  <section class="section" data-dot="Why Policy">
+    <div class="eyebrow reveal">Policy Matters</div>
+    <h2 class="reveal">Three tensions every regulator must resolve</h2>
+    <div class="grid-3 reveal mt">
+      <div class="card"><div class="ic">🏷️</div><h3>Classification</h3><p>Is a token a currency, a commodity, or a security? The answer decides <em>who</em> regulates it.</p></div>
+      <div class="card"><div class="ic">⚖️</div><h3>Protection vs. innovation</h3><p>Heavy rules push builders offshore; under-regulation exposes retail investors to harm.</p></div>
+      <div class="card"><div class="ic">🌍</div><h3>Jurisdiction</h3><p>Borderless networks, national laws. Coordination is hard and incomplete.</p></div>
+    </div>
+  </section>
+
+  <!-- Policy interactive comparator -->
+  <section class="section wide" data-dot="IN · US · EU">
+    <div class="eyebrow reveal">Comparative Regulation</div>
+    <h2 class="reveal">India · United States · European Union</h2>
+    <p class="reveal lead">Pick a jurisdiction to read its story; the comparison table updates to highlight it.</p>
+    <div class="panel reveal mt" id="policyDemo"></div>
+  </section>
+
+  <!-- ========================= PART III ========================= -->
+  <section class="section part-divider" data-dot="Part III">
+    <div class="num reveal">03</div>
+    <h2 class="reveal">Emerging Developments</h2>
+    <p class="reveal lead">The frontier: privacy, usability, real assets, and connecting the islands.</p>
+  </section>
+
+  <!-- ZKP -->
+  <section class="section" data-dot="Zero-Knowledge">
+    <div class="eyebrow reveal">Frontier</div>
+    <h2 class="reveal">Zero-Knowledge Proofs</h2>
+    <p class="reveal lead">Prove you know something <strong>without revealing it</strong>. The classic intuition: the Ali Baba cave. Peggy claims she knows the secret word that opens a door connecting two tunnels. She can prove it to skeptical Victor — without ever saying the word. Run the rounds: each one halves the chance a liar gets lucky.</p>
+    <div class="panel reveal mt">
+      <div class="demo-label">Live · The Ali Baba cave protocol</div>
+      <div id="zkpDemo"></div>
+    </div>
+    <div class="grid-3 reveal mt">
+      <div class="card"><h3>zk-Rollups</h3><p>Batch thousands of txns into one proof verified on Ethereum. <span class="pill vi">zkSync</span> <span class="pill vi">StarkNet</span></p></div>
+      <div class="card"><h3>Private compliance</h3><p>Prove you're <em>not</em> on a sanctions list without revealing your identity.</p></div>
+      <div class="card"><h3>Private payments</h3><p>Zcash pioneered shielded transactions with zk-SNARKs on a public chain.</p></div>
+    </div>
+  </section>
+
+  <!-- Account abstraction -->
+  <section class="section" data-dot="Smart Wallets">
+    <div class="eyebrow reveal">Frontier</div>
+    <h2 class="reveal">Account Abstraction — wallets that think</h2>
+    <p class="reveal lead">Traditionally one key controls one account — lose it, lose everything. <strong>ERC-4337</strong> (live since 2023) makes the wallet itself a smart contract. Toggle features on this wallet:</p>
+    <div class="panel reveal mt">
+      <div class="demo-label">Live · Configure a smart account</div>
+      <div id="aaDemo"></div>
+    </div>
+  </section>
+
+  <!-- RWA -->
+  <section class="section" data-dot="Tokenization">
+    <div class="eyebrow reveal">Frontier</div>
+    <h2 class="reveal">Real-World Asset Tokenization</h2>
+    <p class="reveal lead">Representing ownership of a real asset as an on-chain token. T-bills, private credit, real estate, trade-finance receivables. Why? 24/7 settlement, fractional ownership, programmable compliance, less counterparty risk.</p>
+    <div class="grid-2 reveal mt">
+      <div class="panel center">
+        <div class="stat"><span class="big" id="rwaCounter">$0</span><span class="lbl">tokenized U.S. Treasuries on-chain (early 2025)</span></div>
+        <p class="note mt">BlackRock BUIDL · Franklin Templeton OnChain</p>
+      </div>
+      <div class="panel center">
+        <div class="stat"><span class="big" id="rwa2030" style="color:var(--gold)">$0T</span><span class="lbl">assets potentially tokenized by 2030 (BCG estimate)</span></div>
+        <p class="note mt">India's SEBI &amp; IFSCA have opened RWA consultations.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CBDC -->
+  <section class="section" data-dot="CBDCs">
+    <div class="eyebrow reveal">Frontier</div>
+    <h2 class="reveal">CBDCs — state-issued digital currency</h2>
+    <p class="reveal lead">A central bank's own digital money. Crucially <strong>not</strong> a cryptocurrency: it's centralized, state-controlled, and permissioned. Crypto and CBDCs sit at opposite ends of the control spectrum.</p>
+    <div class="panel reveal mt">
+      <div class="demo-label">Crypto ↔ CBDC — the control spectrum</div>
+      <div id="cbdcDemo"></div>
+    </div>
+    <p class="reveal note mt">Key debate: programmable money that can expire or be restricted raises civil-liberties concerns; bank disintermediation risk; privacy of state-visible transactions.</p>
+  </section>
+
+  <!-- Interoperability -->
+  <section class="section" data-dot="Interop">
+    <div class="eyebrow reveal">Frontier</div>
+    <h2 class="reveal">Interoperability — connecting the islands</h2>
+    <p class="reveal lead">Hundreds of chains, assets siloed. <strong>Bridges</strong> lock assets on one chain and mint representations on another — and have been crypto's single largest attack surface: <strong>over $2.5B</strong> lost to bridge hacks (Ronin, Wormhole, Nomad) in 2021–2023.</p>
+    <div class="panel reveal mt">
+      <div class="demo-label">Live · How a cross-chain bridge works (and where it breaks)</div>
+      <div id="bridgeDemo"></div>
+    </div>
+    <div class="grid-3 reveal mt">
+      <div class="card"><h3>CCIP</h3><p>Chainlink's oracle-secured cross-chain messaging.</p></div>
+      <div class="card"><h3>IBC</h3><p>Cosmos's native interoperability standard.</p></div>
+      <div class="card"><h3>LayerZero</h3><p>Generalized messaging used by major DeFi protocols.</p></div>
+    </div>
+  </section>
+
+  <!-- Takeaways -->
+  <section class="section wide" data-dot="Takeaways">
+    <div class="eyebrow reveal">Wrap-up</div>
+    <h2 class="reveal">Key takeaways</h2>
+    <div class="takeaways reveal">
+      <div class="takeaway"><div class="n">01</div><div>Blockchain's value is <strong>immutability and trustless coordination</strong> — not just cryptocurrency.</div></div>
+      <div class="takeaway"><div class="n">02</div><div>Consensus sets the <strong>security–efficiency tradeoff</strong>; PoS has largely displaced PoW.</div></div>
+      <div class="takeaway"><div class="n">03</div><div>Smart contracts enable <strong>programmable value</strong> — and introduce new attack surface.</div></div>
+      <div class="takeaway"><div class="n">04</div><div>The US stays <strong>fragmented</strong>; the EU's <strong>MiCA</strong> is the global regulatory benchmark.</div></div>
+      <div class="takeaway"><div class="n">05</div><div>India: <strong>restrictive tax, no enabling framework</strong> → institutional uncertainty.</div></div>
+      <div class="takeaway"><div class="n">06</div><div>ZKPs, account abstraction, RWA tokenization, interoperability — <strong>the frontier</strong>.</div></div>
+    </div>
+  </section>
+
+  <footer>
+    <div>Built as an interactive companion to <span class="mono">Blockchain — A Technical &amp; Policy Primer</span></div>
+    <div class="mt-s">Every demo runs locally in your browser. SHA-256 is computed for real. <span class="kbd">←</span> <span class="kbd">→</span> to jump sections.</div>
+  </footer>
+
+  <script src="js/sha256.js"></script>
+  <script src="js/demos.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
