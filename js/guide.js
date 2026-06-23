@@ -1,219 +1,171 @@
 /* ============================================================
-   guide.js — the teaching layer. A sequence of deep, technical
-   chapters, each of which drives & explains the ONE live blockchain.
+   guide.js — the narration. Eight chapters that drive and explain
+   the one live network. Plain, concrete, peer-to-peer voice.
    ============================================================ */
 window.GUIDE = (function () {
   "use strict";
   const C = window.CHAIN, V = window.VIZ;
   const $ = (s) => document.querySelector(s);
-  const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
   const fmt = (n) => Math.round(n).toLocaleString();
   let idx = 0; const done = new Set(); let cleanups = [];
   const track = (off) => cleanups.push(off);
-
-  // helper: render a contextual control widget block
-  function widget(label, inner) { return `<div class="widget"><div class="wl">${label}</div>${inner}</div>`; }
+  const w = (label, inner) => `<div class="w"><div class="wl">${label}</div>${inner}</div>`;
+  const obj = (t) => `<div class="do" id="theObjective"><div class="l">Try this</div><div class="t">${t}</div></div>`;
 
   const CH = [];
 
-  /* ===== 1 · THE LIVING LEDGER ===== */
-  CH.push({ id: "intro", label: "Chapter 1 of 8", title: "The living ledger",
+  /* ===== 1 ===== */
+  CH.push({ id: "ledger", kick: "Chapter 1 / 8", title: "The ledger no one owns", sub: "Why this exists",
     body() { return `
-      <p class="gp">You're looking at a <b>real blockchain, running live</b>. Those cards streaming in from the right are <span class="term">blocks</span>, each one mined seconds ago by one of the miners up top. This isn't a recording — it's an actual Proof-of-Work network executing in your browser, with real SHA-256 and real cryptographic signatures.</p>
-      <p class="gp">A blockchain is fundamentally a <b>distributed ledger</b>: an append-only list of transactions that thousands of computers keep identical copies of, with <b>no central authority</b>. New transactions wait in the <span class="term">mempool</span> (bottom strip) until a miner packages them into the next block and links it onto the chain.</p>
-      <div class="gh"><span class="n">▸</span>What to watch</div>
-      <p class="gp"><b>Miners</b> (top) race to extend the chain. The <b>chain</b> (center) only ever grows rightward. The <b>mempool</b> (bottom) fills with pending transactions and drains as they get confirmed. Up in the title bar, live stats track block height, network hashrate, and difficulty.</p>
-      ${widget("Network controls", `<p class="small muted" style="margin:0 0 11px">The network is running. Let it mine a few blocks.</p><div class="btn-row"><button class="btn primary" id="w1play">▶ Play / Pause</button></div><div class="small" id="w1count" style="margin-top:10px;font-family:var(--mono);color:var(--ink-3)"></div>`)}
-      <div class="callout deep"><span class="i">🔬</span><div>Why "chain"? Each block embeds a cryptographic hash of the one before it. Reorder or edit any past block and every later link breaks — which is what makes history practically immutable. You'll prove this to yourself in the next chapter.</div></div>`; },
-    enter(ctx) {
-      if (!C.state.running) C.play();
-      $("#w1play").onclick = () => C.state.running ? C.pause() : C.play();
-      let base = C.state.chain.length, need = 3;
-      const upd = () => { const made = C.state.chain.length - base; $("#w1count").textContent = `blocks mined since you arrived: ${made} / ${need}`; if (made >= need) ctx.done(); };
-      upd(); track(C.on("block", upd));
-    }});
+      <p class="lead">Money is a list of who owns what. The hard part was never the list. It was agreeing on it.</p>
+      <p class="p">A bank keeps that list on its own servers, and you trust it to stay honest. A blockchain throws out the trusted keeper and lets a few thousand strangers each hold a copy of one shared list that no single one of them can rewrite. What you're looking at is exactly that, running live: transactions, packed into <span class="k">blocks</span>, mined seconds ago, linked into one growing record.</p>
+      <p class="p">The glowing mesh is the network — every node keeps the full ledger. Watch the light travel along it: those are transactions propagating. The cards streaming in are the blocks. They only ever get appended. Never edited.</p>
+      ${obj("Let the network run and watch three new blocks join the chain.")}
+      ${w("Network", `<div class="btn-row"><button class="btn" id="w1play">Pause / resume</button></div><div class="note" id="w1count" style="margin-top:10px"></div>`)}
+      <div class="aside"><div class="h">The real problem</div>With no one in charge, who decides which transactions are real, and in what order? Every chapter after this is a piece of that answer.</div>`; },
+    enter(ctx) { if (!C.state.running) C.play(); $("#w1play").onclick = () => C.state.running ? C.pause() : C.play();
+      let base = C.state.chain.length; const upd = () => { const m = C.state.chain.length - base; $("#w1count").textContent = `${Math.min(m,3)} of 3 blocks added`; if (m >= 3) ctx.done(); }; upd(); track(C.on("block", upd)); }});
 
-  /* ===== 2 · ANATOMY OF A BLOCK ===== */
-  CH.push({ id: "block", label: "Chapter 2 of 8", title: "Anatomy of a block",
+  /* ===== 2 ===== */
+  CH.push({ id: "block", kick: "Chapter 2 / 8", title: "Anatomy of a block", sub: "Hashing & headers",
     body() { return `
-      <p class="gp">Let's freeze the network and dissect a single block. Every block has a <span class="term">header</span> — a handful of fields — plus a list of transactions. The header is what actually gets hashed.</p>
-      <div class="gh"><span class="n">▸</span>The header fields</div>
-      <p class="gp"><b>Previous hash</b> — the 256-bit fingerprint of the prior block. This is the literal "chain". <b>Merkle root</b> — a single hash that summarizes every transaction in the block (a binary tree of hashes). <b>Timestamp</b>, <b>difficulty</b>, and the <b>nonce</b> — the number miners brute-force to satisfy Proof of Work.</p>
-      <div class="gh"><span class="n">▸</span>Why SHA-256 underpins all of it</div>
-      <p class="gp">SHA-256 maps any input to a fixed <b>256-bit</b> output and has three properties that matter here: it's <b>deterministic</b> (same input → same hash), <b>collision/preimage resistant</b> (you can't find an input for a target hash, nor two inputs sharing one), and shows the <b>avalanche effect</b> (flip one bit of input → ~half the output bits flip). Together these make the hash a tamper-evident seal: change <i>anything</i> and the fingerprint changes unpredictably.</p>
-      <div class="objective"><div class="lab">🎯 Objective</div><div class="txt">Click any block in the chain to open the inspector, then hit <b>“Re-hash the header & verify”</b> to confirm its hash is real and meets difficulty.</div></div>
-      ${widget("Inspect", `<button class="btn primary block" id="w2open">🔍 Open the latest block</button>`)}
-      <div class="callout deep"><span class="i">🔬</span><div>In the inspector you can also recompute the Merkle root from the transaction list. If even one transaction were altered, the recomputed root wouldn't match the one in the header — and neither would the block hash.</div></div>`; },
-    enter(ctx) {
-      C.pause();
-      $("#w2open").onclick = () => V.openInspector(C.state.chain[C.state.chain.length - 1]);
-      V.onInspect(() => { ctx.done(); });
-    }, exit() { V.onInspect(null); }});
+      <p class="lead">A block is mostly a small header — five fields — plus a list of transactions.</p>
+      <p class="p">The header holds the <b>previous block's hash</b>, a <b>Merkle root</b> (one hash that summarizes every transaction inside), a timestamp, the difficulty, and a <span class="k">nonce</span>. Hash that header and you get the block's own ID. Because each block names the one before it, you can't quietly reorder them.</p>
+      <p class="p">The function doing the work is <span class="k">SHA-256</span>. Feed it anything, get back 256 bits. Same input, same output, forever. Change one character and roughly half the output bits flip, with no pattern. And it doesn't run backwards. That's why a hash is a tamper seal: alter the data and the fingerprint stops fitting.</p>
+      ${obj("Open any block and re-hash its header to confirm the ID is genuine.")}
+      ${w("Inspect", `<button class="btn primary block" id="w2open">Open the latest block</button>`)}
+      <div class="aside"><div class="h">Try breaking it</div>In the inspector you can also rebuild the Merkle root from the transaction list. Change one transaction and it won't match — and the block's hash won't either.</div>`; },
+    enter(ctx) { C.pause(); $("#w2open").onclick = () => V.openInspector(C.state.chain[C.state.chain.length - 1]); V.onInspect(() => ctx.done()); },
+    exit() { V.onInspect(null); }});
 
-  /* ===== 3 · YOUR IDENTITY ===== */
-  CH.push({ id: "identity", label: "Chapter 3 of 8", title: "Your identity & money",
+  /* ===== 3 ===== */
+  CH.push({ id: "keys", kick: "Chapter 3 / 8", title: "Your keys", sub: "Identity without accounts",
     body() { return `
-      <p class="gp">On a blockchain there are no accounts-with-passwords. Ownership is pure cryptography. You hold a <span class="term">private key</span> — a secret random number — and from it derive a <b>public key</b> and a shorter <b>address</b>. The address is your account number; you share it freely. The private key signs your transactions; you never reveal it.</p>
-      <div class="gh"><span class="n">▸</span>The asymmetry that makes it work</div>
-      <p class="gp">This is <b>asymmetric (public-key) cryptography</b> — specifically <span class="term">ECDSA</span> on the P-256 curve, generated for real by your browser's Web Crypto API. Anything signed by the private key can be verified by anyone using the public key, yet the public key reveals nothing about the private one. Your <b>address</b> is <code>hash(public key)</code>, truncated — which is why addresses look like random hex.</p>
-      <p class="gp">This network uses the <b>account model</b> (like Ethereum): each address has a running <b>balance</b> and a <b>nonce</b> (a counter that prevents the same signed transaction from being replayed twice). Bitcoin instead uses UTXOs — unspent outputs — but the security idea is identical.</p>
-      <div class="objective"><div class="lab">🎯 Objective</div><div class="txt">Generate your key pair and claim some test coins from the faucet.</div></div>
-      ${widget("Your wallet", `<div id="w3empty"><button class="btn primary block lg" id="w3gen">🔑 Generate my wallet${C.hasSubtle ? ' <span class="pill" style="background:rgba(255,255,255,.22);color:#fff">real ECDSA</span>' : ''}</button></div>
-        <div id="w3show" style="display:none"><div class="kvs"><div class="kv"><span class="k">address</span><span class="v brand" id="w3addr"></span></div><div class="kv"><span class="k">private key</span><span class="v">•••••• (secret)</span></div><div class="kv"><span class="k">balance</span><span class="v green" id="w3bal">0</span></div></div><button class="btn cyan block" id="w3faucet" style="margin-top:10px">🚰 Claim 100 test coins</button></div>`)}`; },
-    enter(ctx) {
-      const gen = $("#w3gen");
-      gen.onclick = async () => { const w = await C.createWallet(); $("#w3empty").style.display = "none"; $("#w3show").style.display = "block"; $("#w3addr").textContent = C.addrShort(w.address); V.renderMiners(); V.toast("Wallet created — this is you now"); };
-      const fau = $("#w3faucet"); fau.onclick = () => { C.faucet(100); $("#w3bal").textContent = C.balanceOf(C.state.you.address).toFixed(0); V.confetti(); ctx.done(); };
-      if (C.state.you) { $("#w3empty").style.display = "none"; $("#w3show").style.display = "block"; $("#w3addr").textContent = C.addrShort(C.state.you.address); $("#w3bal").textContent = C.balanceOf(C.state.you.address).toFixed(0); }
-    }});
+      <p class="lead">There are no usernames and no passwords. A private key is the only thing that proves ownership.</p>
+      <p class="p">You hold a secret key — a random 256-bit number. From it you derive a <b>public key</b>, and from that a short <b>address</b>. Share the address; it's how people pay you. Guard the private key; it's how you spend. This is <span class="k">ECDSA</span>, the same elliptic-curve signature scheme Bitcoin and Ethereum use, generated for real by your browser right now.</p>
+      <p class="p">The math runs one way. The private key signs, the public key checks the signature, and no amount of checking ever reveals the secret. The flip side is unforgiving: lose the key and the money is gone. No reset, no support line. That's the price of having no custodian.</p>
+      ${obj("Generate your key pair, then pull some coins from the faucet.")}
+      ${w("Your wallet", `<div id="w3empty"><button class="btn primary block lg" id="w3gen">Generate my key pair</button></div>
+        <div id="w3show" style="display:none"><div class="kvs"><div class="kv"><span class="k">address</span><span class="v vi" id="w3addr"></span></div><div class="kv"><span class="k">private key</span><span class="v">•••••• kept secret</span></div><div class="kv"><span class="k">balance</span><span class="v gr" id="w3bal">0</span></div></div><button class="btn cyan block" id="w3faucet" style="margin-top:11px">Claim 100 test coins</button></div>`)}`; },
+    enter(ctx) { const g = $("#w3gen");
+      g.onclick = async () => { const wal = await C.createWallet(); $("#w3empty").style.display = "none"; $("#w3show").style.display = "block"; $("#w3addr").textContent = C.addrShort(wal.address); V.toast("Key pair generated. This is you now."); };
+      $("#w3faucet").onclick = () => { C.faucet(100); $("#w3bal").textContent = C.balanceOf(C.state.you.address).toFixed(0); ctx.done(); };
+      if (C.state.you) { $("#w3empty").style.display = "none"; $("#w3show").style.display = "block"; $("#w3addr").textContent = C.addrShort(C.state.you.address); $("#w3bal").textContent = C.balanceOf(C.state.you.address).toFixed(0); } }});
 
-  /* ===== 4 · SENDING VALUE ===== */
-  CH.push({ id: "send", label: "Chapter 4 of 8", title: "Sending value",
+  /* ===== 4 ===== */
+  CH.push({ id: "send", kick: "Chapter 4 / 8", title: "Sending money", sub: "Signatures, fees, the mempool",
     body() { return `
-      <p class="gp">Time to spend. A <span class="term">transaction</span> says "move X coins from my address to theirs," plus a <b>fee</b> that goes to whoever mines it. You <b>sign</b> the whole thing with your private key. The signature mathematically binds to the exact contents — change the amount by one coin afterward and the signature is instantly invalid.</p>
-      <div class="gh"><span class="n">▸</span>The fee market</div>
-      <p class="gp">Your signed transaction enters the <span class="term">mempool</span> and competes for space. Miners are economically rational: they pack the <b>highest-fee</b> transactions first, because they keep those fees. Set a higher fee and you'll be confirmed sooner. When a block includes your transaction, that's <b>1 confirmation</b>; each block on top adds another.</p>
-      <div class="gh"><span class="n">▸</span>Double-spending</div>
-      <p class="gp">Notice you can't spend coins you don't have — the network checks your balance. You also can't spend the same coins twice: try it and only one transaction will survive into a block. Resolving <i>which</i> one, with no central referee, is the consensus problem we tackle next.</p>
-      <div class="objective"><div class="lab">🎯 Objective</div><div class="txt">Broadcast a transaction, then watch the chain confirm it. The block that includes it will open automatically.</div></div>
-      ${widget("Compose a transaction", `<label class="fld">Amount (coins)</label><input class="input mono" id="w4amt" value="25">
-        <label class="fld" style="margin-top:10px">Fee <span class="muted" style="text-transform:none">(higher = faster)</span></label><div class="slider-row"><input type="range" id="w4fee" min="0.2" max="5" step="0.1" value="1.5"><span class="v" id="w4feev">1.5</span></div>
-        <button class="btn primary block" id="w4send" style="margin-top:12px">✍️ Sign &amp; broadcast</button>
-        <div class="small" id="w4msg" style="margin-top:9px"></div>`)}`; },
-    enter(ctx) {
-      if (!C.state.you) { C.createWallet().then(() => C.faucet(100)); }
-      C.setSpeed(1); C.play();
-      const feeS = $("#w4fee"); feeS.oninput = () => $("#w4feev").textContent = (+feeS.value).toFixed(1);
-      let myTxHash = null;
-      $("#w4send").onclick = async () => {
-        const amt = +$("#w4amt").value, fee = +feeS.value;
-        const r = await C.sendTx({ to: "random", amount: amt, fee });
-        if (r.error) { $("#w4msg").innerHTML = `<span style="color:var(--red)">✗ ${r.error}</span>`; return; }
-        myTxHash = r.tx.hash; $("#w4msg").innerHTML = `<span style="color:var(--green)">✓ Signed &amp; broadcast.</span> Watch the mempool (bottom) — your tx is highlighted. It'll be mined soon.`;
-        V.highlight("#mempool"); setTimeout(() => V.clearHighlight(), 2500);
-      };
-      track(C.on("block", (b) => {
-        if (myTxHash && b._txObjs && b._txObjs.find(t => t.hash === myTxHash)) {
-          V.toast("Your transaction was confirmed!"); V.openInspector(b); ctx.done(); myTxHash = null;
-        }
-      }));
-    }});
+      <p class="lead">A transaction is a signed instruction: move this much from my address to theirs.</p>
+      <p class="p">You sign it with your private key, and the signature covers the exact contents — change the amount afterward and it breaks. The signed transaction lands in the <span class="k">mempool</span>, the waiting room for unconfirmed payments. Miners pick from there.</p>
+      <p class="p">They pick by <b>fee</b>. A miner keeps the fees in the block it finds, so higher-fee transactions get chosen first. The moment a block includes yours, that's one confirmation. Spend coins you don't have and the network rejects it outright. Spend the same coins twice and only one survives — and choosing which, with no referee, is exactly what mining settles next.</p>
+      ${obj("Sign a transaction and watch the chain confirm it. The block that includes it will open on its own.")}
+      ${w("New transaction", `<label class="fld">Amount</label><input class="in mono" id="w4amt" value="25">
+        <label class="fld" style="margin-top:11px">Fee &nbsp;<span class="muted" style="text-transform:none;letter-spacing:0">higher confirms sooner</span></label><div class="srow"><input type="range" id="w4fee" min="0.2" max="5" step="0.1" value="1.5"><span class="v" id="w4feev">1.5</span></div>
+        <button class="btn primary block" id="w4send" style="margin-top:12px">Sign and broadcast</button><div class="note" id="w4msg" style="margin-top:9px"></div>`)}`; },
+    enter(ctx) { if (!C.state.you) C.createWallet().then(() => C.faucet(100)); C.setSpeed(1); C.play();
+      const f = $("#w4fee"); f.oninput = () => $("#w4feev").textContent = (+f.value).toFixed(1);
+      let mine = null;
+      $("#w4send").onclick = async () => { const r = await C.sendTx({ to: "random", amount: +$("#w4amt").value, fee: +f.value }); if (r.error) { $("#w4msg").innerHTML = `<span class="note bad">${r.error}</span>`; return; } mine = r.tx.hash; $("#w4msg").innerHTML = `<span class="note ok">Signed and broadcast.</span> It's in the mempool below, highlighted. Watch for it to be mined.`; V.highlight("#mempool"); };
+      track(C.on("block", (b) => { if (mine && b._txObjs && b._txObjs.find(t => t.hash === mine)) { V.toast("Your transaction was confirmed."); V.openInspector(b); ctx.done(); mine = null; } })); }});
 
-  /* ===== 5 · PROOF OF WORK ===== */
-  CH.push({ id: "pow", label: "Chapter 5 of 8", title: "Proof of Work — become a miner",
+  /* ===== 5 ===== */
+  CH.push({ id: "pow", kick: "Chapter 5 / 8", title: "Mining", sub: "Proof of work",
     body() { return `
-      <p class="gp">So far miners did the work for you. Now you take the pickaxe. <span class="term">Mining</span> means searching for a <b>nonce</b> such that <code>SHA-256(block header)</code> starts with a required number of zeros (the <span class="term">difficulty target</span>). Because the hash is unpredictable, there's no shortcut — you must guess, billions of times per second on the real network.</p>
-      <div class="gh"><span class="n">▸</span>The numbers</div>
-      <p class="gp">Each extra zero of difficulty makes the puzzle <b>16× harder</b>. Expected guesses ≈ <code>16^(zeros)</code>. Your odds of finding any given block equal <b>your hash power ÷ the network's total</b> — it's a memoryless lottery. Find one and you collect the <b>block reward</b> (newly minted coins) plus all the fees in that block. Real networks auto-adjust difficulty to keep block time roughly constant as miners join or leave.</p>
-      <div class="gh"><span class="n">▸</span>Why this equals security</div>
-      <p class="gp">Producing a valid block is expensive; <b>verifying</b> one is a single hash. That asymmetry means honest nodes cheaply reject fakes, while rewriting history would cost an attacker an astronomical amount of redone work. <b>Work is the lock on the past.</b></p>
-      <div class="objective"><div class="lab">🎯 Objective</div><div class="txt">Join the network as a miner, crank your hash power, and mine a block with <b>YOUR</b> name on it.</div></div>
-      ${widget("Your mining rig", `<div class="slider-row"><span class="nm">Your hash power</span><input type="range" id="w5hp" min="5" max="200" value="60"><span class="v" id="w5hpv">60</span></div>
-        <div class="slider-row" style="margin-top:8px"><span class="nm">Difficulty</span><input type="range" id="w5diff" min="3" max="5" value="4"><span class="v" id="w5diffv">4</span></div>
-        <div class="small muted" id="w5share" style="margin:8px 0"></div>
-        <button class="btn amber block" id="w5join">⛏ Join mining</button>`)}`; },
-    enter(ctx) {
-      C.setSpeed(2); if (!C.state.running) C.play();
-      const hp = $("#w5hp"), diff = $("#w5diff");
-      const updShare = () => { const total = C.totalHP() - (C.state.miners.find(m => m.isYou)?.hp || 0) + (+hp.value); $("#w5share").innerHTML = `That's ~<b>${Math.round(+hp.value / total * 100)}%</b> of network hash power → expect ~${Math.round(total / +hp.value)} blocks between your wins.`; };
-      hp.oninput = () => { $("#w5hpv").textContent = hp.value; C.setYourHP(+hp.value); updShare(); };
-      diff.oninput = () => { $("#w5diffv").textContent = diff.value; C.setDifficulty(+diff.value); };
-      $("#w5join").onclick = () => { C.joinAsMiner(+hp.value); updShare(); V.toast("You're mining! Watch for a block with your stripe."); $("#w5join").textContent = "⛏ Mining…"; };
-      updShare();
-      track(C.on("block", (b) => { if (b.minerIsYou) { V.confetti(); V.toast("You mined a block! Reward + fees are yours."); ctx.done(); } }));
-    }});
+      <p class="lead">Adding a block has to be expensive. Otherwise rewriting history would be free.</p>
+      <p class="p">Mining is a guessing game with one rule: find a <span class="k">nonce</span> that makes the block's hash start with a required run of zeros. There's no shortcut, because the hash is unpredictable — you just try numbers, fast. Each extra zero of difficulty makes a winning hash 16 times rarer. The strip up top shows the actual hashes flying by as the network searches.</p>
+      <p class="p">Your odds of finding the next block equal your share of the network's hashing. It's a lottery with no memory; no one is ever "due." Win and you take the block reward plus every fee in the block. Real networks quietly retune the difficulty to keep block time roughly constant as miners join and leave.</p>
+      <p class="p">Here's the point of all of it: producing a block costs real work, but checking one costs a single hash. That gap is the security. Honest nodes reject fakes for free, and rewriting the past means redoing every block since — faster than the rest of the network combined.</p>
+      ${obj("Join as a miner, turn up your hash power, and mine a block under your own name.")}
+      ${w("Your rig", `<div class="srow"><span class="nm">Hash power</span><input type="range" id="w5hp" min="5" max="220" value="70"><span class="v" id="w5hpv">70</span></div>
+        <div class="srow" style="margin-top:9px"><span class="nm">Difficulty</span><input type="range" id="w5diff" min="3" max="5" value="4"><span class="v" id="w5diffv">4</span></div>
+        <div class="note" id="w5share" style="margin:9px 0"></div><button class="btn gold block" id="w5join">Start mining</button>`)}`; },
+    enter(ctx) { C.setSpeed(2); if (!C.state.running) C.play();
+      const hp = $("#w5hp"), df = $("#w5diff");
+      const sh = () => { const tot = C.totalHP() - (C.state.miners.find(m => m.isYou)?.hp || 0) + (+hp.value); $("#w5share").innerHTML = `That's about <b>${Math.round(+hp.value / tot * 100)}%</b> of the network. Expect one win roughly every ${Math.round(tot / +hp.value)} blocks.`; };
+      hp.oninput = () => { $("#w5hpv").textContent = hp.value; C.setYourHP(+hp.value); sh(); };
+      df.oninput = () => { $("#w5diffv").textContent = df.value; C.setDifficulty(+df.value); };
+      $("#w5join").onclick = () => { C.joinAsMiner(+hp.value); sh(); $("#w5join").textContent = "Mining…"; V.toast("You're mining. Watch for a block under your name."); }; sh();
+      track(C.on("block", (b) => { if (b.minerIsYou) { V.toast("You mined a block. The reward and fees are yours."); ctx.done(); } })); }});
 
-  /* ===== 6 · CONSENSUS & FORKS ===== */
-  CH.push({ id: "forks", label: "Chapter 6 of 8", title: "Consensus & forks",
+  /* ===== 6 ===== */
+  CH.push({ id: "forks", kick: "Chapter 6 / 8", title: "Forks", sub: "Reaching consensus",
     body() { return `
-      <p class="gp">Blocks propagate at the speed of the internet, not instantly. So two miners on opposite sides of the world can solve the <b>same height</b> at nearly the same moment. Now the network momentarily disagrees — there are two valid tips. This is a <span class="term">fork</span>.</p>
-      <div class="gh"><span class="n">▸</span>The longest-chain rule</div>
-      <p class="gp">The resolution is beautifully simple: nodes always extend the chain with the <b>most accumulated Proof of Work</b> (informally, the longest). As soon as one branch gets the next block, every node switches to it. The block on the losing branch becomes an <span class="term">orphan</span> and its transactions flow back into the mempool to be re-mined.</p>
-      <div class="gh"><span class="n">▸</span>Why confirmations exist</div>
-      <p class="gp">This is exactly why a payment isn't final the instant it's mined — it could still be on a branch that loses. Each additional block on top (a <b>confirmation</b>) buries it deeper, and the probability of a reorg that deep falls <b>exponentially</b>. Bitcoin's "wait for 6 confirmations" is this principle in practice. Finality here is <b>probabilistic</b>, not absolute.</p>
-      <div class="objective"><div class="lab">🎯 Objective</div><div class="txt">Trigger a fork, then resolve it — pick which branch the next block extends and watch the other get orphaned.</div></div>
-      ${widget("Fork lab", `<button class="btn primary block" id="w6fork">⚡ Trigger a fork at the tip</button>
-        <div id="w6resolve" style="display:none;margin-top:10px"><p class="small" style="margin:0 0 9px">Two valid blocks now sit at the same height. Which branch gets extended next?</p><div class="btn-row"><button class="btn ghost" id="w6main">Extend original</button><button class="btn ghost" id="w6alt">Extend competitor</button></div></div>
-        <div class="small" id="w6msg" style="margin-top:9px"></div>`)}`; },
-    enter(ctx) {
-      C.pause();
-      $("#w6fork").onclick = () => { C.demoFork(); $("#w6resolve").style.display = "block"; $("#w6fork").disabled = true; $("#w6msg").innerHTML = `<span style="color:var(--amber)">⚠ Fork! Two valid tips at the same height. The network is briefly undecided.</span>`; V.highlight(".blk[data-fork='1']"); setTimeout(() => V.clearHighlight(), 2600); };
-      const resolve = (main) => { C.resolveFork(main); $("#w6msg").innerHTML = `<span style="color:var(--green)">✓ Resolved by longest-chain rule.</span> The losing block is orphaned; its txs return to the mempool. Consensus restored.`; $("#w6main").disabled = $("#w6alt").disabled = true; ctx.done(); };
-      $("#w6main").onclick = () => resolve(true); $("#w6alt").onclick = () => resolve(false);
-    }});
+      <p class="lead">Two miners can solve the same height at the same instant. Now the network disagrees with itself.</p>
+      <p class="p">Blocks travel at internet speed, not instantly, so a brief split is normal. This is a <span class="k">fork</span>: two valid chains, same length. The rule that settles it is blunt — keep the chain with the most work behind it. Whichever side gets the next block wins, and everyone switches to it.</p>
+      <p class="p">The block on the losing side becomes an <b>orphan</b>, and its transactions fall back into the mempool to be mined again. This is why a fresh payment isn't final. Every block added on top buries it deeper, and the chance of it ever being undone drops sharply. "Wait for six confirmations" is just that idea with a number on it.</p>
+      ${obj("Trigger a fork, then resolve it by choosing which branch the next block extends.")}
+      ${w("Fork", `<button class="btn primary block" id="w6fork">Trigger a fork at the tip</button>
+        <div id="w6resolve" style="display:none;margin-top:11px"><div class="note">Two valid blocks now sit at the same height. Which one gets built on?</div><div class="btn-row" style="margin-top:9px"><button class="btn" id="w6main">Extend the original</button><button class="btn" id="w6alt">Extend the rival</button></div></div>
+        <div class="note" id="w6msg" style="margin-top:10px"></div>`)}`; },
+    enter(ctx) { C.pause();
+      $("#w6fork").onclick = () => { C.demoFork(); $("#w6resolve").style.display = "block"; $("#w6fork").disabled = true; $("#w6msg").innerHTML = `<span class="note">Two tips at the same height. The network is briefly undecided.</span>`; };
+      const r = () => { C.resolveFork(true); $("#w6msg").innerHTML = `<span class="note ok">Settled by the longest-chain rule. The losing block is orphaned and its transactions return to the mempool.</span>`; $("#w6main").disabled = $("#w6alt").disabled = true; ctx.done(); };
+      $("#w6main").onclick = r; $("#w6alt").onclick = r; }});
 
-  /* ===== 7 · THE 51% ATTACK ===== */
-  CH.push({ id: "attack", label: "Chapter 7 of 8", title: "The 51% attack",
+  /* ===== 7 ===== */
+  CH.push({ id: "attack", kick: "Chapter 7 / 8", title: "The 51% attack", sub: "Where security comes from",
     body() { return `
-      <p class="gp">Here's the security boundary of the entire system. Imagine you buy a <b>$1,000,000 car</b>. The dealer waits for <b>K confirmations</b>, then hands you the keys. Your heist: secretly mine an <b>alternative chain</b> that omits your payment, and once it's longer than the honest chain, publish it — erasing the payment while you keep the car.</p>
-      <div class="gh"><span class="n">▸</span>The math (Bitcoin whitepaper §11)</div>
-      <p class="gp">If you control fraction <code>q</code> of hash power and the merchant waits <code>z</code> confirmations, your probability of ever catching up follows Satoshi's gambler's-ruin formula. Below <b>q = 50%</b>, that probability <b>decays exponentially</b> in <code>z</code> — which is the whole reason confirmations work. At <b>q ≥ 50%</b> it jumps to a certainty: with the majority of hash power you <i>are</i> the longest chain, and the rules now serve you. Hence "51% attack."</p>
-      <div class="gh"><span class="n">▸</span>What ≥50% can and can't do</div>
-      <p class="gp">A majority attacker can reverse their <i>own</i> recent payments (double-spend) and censor transactions. They <b>cannot</b> steal coins from addresses they don't have keys for, mint coins out of thin air, or change old buried history cheaply. Security ultimately rests on a social fact: <b>no single party controls a majority of hash power.</b></p>
-      <div class="objective"><div class="lab">🎯 Objective</div><div class="txt">Tune your hash power and the merchant's confirmations, read the success probability, then launch a stochastic attack run.</div></div>
-      ${widget("Attack console", `<div class="slider-row"><span class="nm">Your power q</span><input type="range" id="w7q" min="5" max="90" value="30"><span class="v" id="w7qv">30%</span></div>
-        <div class="slider-row" style="margin-top:8px"><span class="nm">Confirmations</span><input type="range" id="w7z" min="0" max="12" value="6"><span class="v" id="w7zv">6</span></div>
-        <div style="text-align:center;margin:12px 0"><div class="small muted">success probability</div><div style="font-family:var(--mono);font-weight:800;font-size:38px" id="w7p">—</div></div>
-        <div id="w7race"></div>
-        <button class="btn danger block" id="w7run" style="margin-top:10px">☠ Launch attack run</button>
-        <div class="small" id="w7msg" style="margin-top:9px"></div>`)}`; },
-    enter(ctx) {
-      C.pause();
-      const q = $("#w7q"), z = $("#w7z");
+      <p class="lead">The whole system rests on one assumption: no one controls most of the mining.</p>
+      <p class="p">Picture buying a car for a million. The dealer waits a few confirmations, then hands you the keys. Your move: quietly mine your own version of the chain that leaves the payment out, and once it's longer than the real one, publish it. The network adopts the longer chain, your payment disappears, and you drive off.</p>
+      <p class="p">Whether it works comes down to two numbers — your share of the hashing, and how many confirmations the dealer waited. Below half the network, your odds of catching up fall off exponentially with each confirmation. That's the gambler's-ruin result from Satoshi's whitepaper, and it's computed live below. At half or more, it stops being a gamble: you are the longest chain.</p>
+      <p class="p">Even then, a majority only lets you reverse your own recent payments and stall others. You can't forge a signature, mint a coin, or rewrite deep history. The real defense isn't in the code. It's that no one owns half the machines.</p>
+      ${obj("Set your power and the merchant's confirmations, read the odds, then run an attack.")}
+      ${w("Attack console", `<div class="srow"><span class="nm">Your power</span><input type="range" id="w7q" min="5" max="90" value="30"><span class="v" id="w7qv">30%</span></div>
+        <div class="srow" style="margin-top:9px"><span class="nm">Confirmations</span><input type="range" id="w7z" min="0" max="12" value="6"><span class="v" id="w7zv">6</span></div>
+        <div style="text-align:center;margin:13px 0"><div class="note">chance the attack eventually succeeds</div><div class="mono" id="w7p" style="font-size:40px;font-weight:700;letter-spacing:-.02em">—</div></div>
+        <div id="w7race"></div><button class="btn danger block" id="w7run" style="margin-top:11px">Run the attack</button><div class="note" id="w7msg" style="margin-top:9px"></div>`)}`; },
+    enter(ctx) { C.pause(); const q = $("#w7q"), z = $("#w7z");
       const upd = () => { $("#w7qv").textContent = q.value + "%"; $("#w7zv").textContent = z.value; const P = C.attackProb(+q.value / 100, +z.value); const e = $("#w7p"); e.textContent = P >= .5 ? Math.round(P * 100) + "%" : P < 1e-4 ? "<0.01%" : (P * 100).toPrecision(2) + "%"; e.style.color = P > .01 ? "var(--red)" : "var(--green)"; };
       q.oninput = upd; z.oninput = upd; upd();
-      $("#w7race").innerHTML = `<div class="slider-row" style="gap:8px"><span class="nm" style="width:64px;color:var(--green)">Honest</span><div style="flex:1;height:18px;background:var(--surface-3);border-radius:7px;overflow:hidden"><i id="w7h" style="display:block;height:100%;width:0;background:var(--green)"></i></div><span class="v" style="width:28px;color:var(--green)" id="w7hn">0</span></div>
-        <div class="slider-row" style="gap:8px;margin-top:6px"><span class="nm" style="width:64px;color:var(--red)">You</span><div style="flex:1;height:18px;background:var(--surface-3);border-radius:7px;overflow:hidden"><i id="w7e" style="display:block;height:100%;width:0;background:var(--red)"></i></div><span class="v" style="width:28px;color:var(--red)" id="w7en">0</span></div>`;
-      let running = false;
-      $("#w7run").onclick = () => { if (running) return; running = true; const qf = +q.value / 100; let hon = +z.value, evil = 0, t = 0; const hf = $("#w7h"), ef = $("#w7e");
-        const step = () => { t++; if (Math.random() < qf) evil++; else hon++; const sc = Math.max(hon, evil, +z.value + 3); hf.style.width = hon / sc * 100 + "%"; ef.style.width = evil / sc * 100 + "%"; $("#w7hn").textContent = hon; $("#w7en").textContent = evil;
-          if (evil > hon) { $("#w7msg").innerHTML = `<span style="color:var(--red)">💀 Attack succeeded — your chain overtook honest. Payment reversed.</span>`; running = false; ctx.done(); return; }
-          if (t > 220 || (qf < .5 && hon - evil > 22)) { $("#w7msg").innerHTML = `<span style="color:var(--green)">🛡 Attack failed — the honest chain pulled away.</span> Re-run; luck varies, the probability above is the long-run truth.`; running = false; ctx.done(); return; }
-          setTimeout(step, 42); };
-        step(); };
-    }});
+      $("#w7race").innerHTML = `<div class="srow" style="gap:8px"><span class="nm" style="width:64px;color:var(--green)">Honest</span><div style="flex:1;height:16px;background:rgba(255,255,255,.08);border-radius:7px;overflow:hidden"><i id="w7h" style="display:block;height:100%;width:0;background:var(--green)"></i></div><span class="v" style="width:26px;color:var(--green)" id="w7hn">0</span></div>
+        <div class="srow" style="gap:8px;margin-top:6px"><span class="nm" style="width:64px;color:var(--red)">You</span><div style="flex:1;height:16px;background:rgba(255,255,255,.08);border-radius:7px;overflow:hidden"><i id="w7e" style="display:block;height:100%;width:0;background:var(--red)"></i></div><span class="v" style="width:26px;color:var(--red)" id="w7en">0</span></div>`;
+      let run = false;
+      $("#w7run").onclick = () => { if (run) return; run = true; const qf = +q.value / 100; let h = +z.value, e = 0, t = 0; const hf = $("#w7h"), ef = $("#w7e");
+        const step = () => { t++; Math.random() < qf ? e++ : h++; const sc = Math.max(h, e, +z.value + 3); hf.style.width = h / sc * 100 + "%"; ef.style.width = e / sc * 100 + "%"; $("#w7hn").textContent = h; $("#w7en").textContent = e;
+          if (e > h) { $("#w7msg").innerHTML = `<span class="note bad">Your chain overtook the honest one. The payment is reversed.</span>`; run = false; ctx.done(); return; }
+          if (t > 220 || (qf < .5 && h - e > 22)) { $("#w7msg").innerHTML = `<span class="note ok">The honest chain pulled away. Attack failed.</span> Run it again — luck varies, but the odds above are the long-run truth.`; run = false; ctx.done(); return; }
+          setTimeout(step, 42); }; step(); }; }});
 
-  /* ===== 8 · BEYOND PROOF OF WORK ===== */
-  CH.push({ id: "beyond", label: "Chapter 8 of 8", title: "Beyond Proof of Work",
+  /* ===== 8 ===== */
+  CH.push({ id: "beyond", kick: "Chapter 8 / 8", title: "Proof of stake, and beyond", sub: "The frontier",
     body() { return `
-      <p class="gp">Proof of Work buys security by burning electricity. The leading alternative, <span class="term">Proof of Stake</span>, buys it with <b>capital at risk</b>. Validators lock up coins as a bond; the protocol pseudo-randomly picks one to propose each block, weighted by stake. Propose honestly → earn rewards. Equivocate or attack → the protocol <b>slashes</b> (destroys) your bond. Ethereum switched to PoS in 2022, cutting its energy use by ~99.95%.</p>
-      <div class="objective"><div class="lab">🎯 Objective</div><div class="txt">Switch the live network from Proof of Work to Proof of Stake and watch energy use collapse.</div></div>
-      ${widget("Consensus engine", `<div class="btn-row"><button class="btn ghost" id="w8pow">⛏ Proof of Work</button><button class="btn primary" id="w8pos">🪙 Proof of Stake</button></div>
-        <div class="slider-row" style="margin-top:12px"><span class="nm">Energy use</span><div style="flex:1;height:18px;background:var(--surface-3);border-radius:7px;overflow:hidden"><i id="w8en" style="display:block;height:100%;width:100%;background:var(--amber);transition:width .6s,background .6s"></i></div><span class="v" id="w8env" style="color:var(--amber)">100%</span></div>`)}
-      <div class="gh"><span class="n">▸</span>The frontier (where the research is)</div>
-      <p class="gp"><b>Layer-2 / rollups</b> batch thousands of transactions off-chain into one on-chain proof — <span class="term">zk-rollups</span> use zero-knowledge proofs (prove a computation was done correctly while revealing nothing) to scale without trust. <b>Smart contracts</b> turn the chain into a world computer (DeFi, NFTs, DAOs). <b>Real-world asset tokenization</b> puts T-bills and real estate on-chain. <b>CBDCs</b> are state-run digital currencies — centralized, the opposite of this. <b>Cross-chain bridges</b> connect networks (and are crypto's biggest hack surface). And <b>policy</b> — the EU's MiCA, the US's fragmented agencies, India's heavy taxation — decides how all of it touches the real economy.</p>
-      <div class="callout deep"><span class="i">🎓</span><div><b>You operated the whole machine:</b> a live ledger, hashed and chained blocks, signed transactions, Proof-of-Work mining, fork resolution, the 51% boundary, and Proof of Stake. Blockchain's real value isn't currency — it's <b>immutability and trustless coordination</b>. Everything else is built on what you just ran.</div></div>`; },
-    enter(ctx) {
-      if (!C.state.running) C.play(); C.setSpeed(2);
-      const setEn = (v, col) => { $("#w8en").style.width = v + "%"; $("#w8en").style.background = col; $("#w8env").textContent = v < 1 ? "~0%" : v + "%"; $("#w8env").style.color = col; };
-      $("#w8pow").onclick = () => { C.setMode("pow"); $("#w8pow").className = "btn primary"; $("#w8pos").className = "btn ghost"; setEn(100, "var(--amber)"); };
-      $("#w8pos").onclick = () => { C.setMode("pos"); $("#w8pos").className = "btn primary"; $("#w8pow").className = "btn ghost"; setEn(0.5, "var(--green)"); V.toast("Now running Proof of Stake — no hashing"); ctx.done(); };
-      $("#w8pow").className = "btn ghost";
-    }});
+      <p class="lead">Proof of work spends electricity to stay honest. There's another way to make honesty pay.</p>
+      <p class="p">Proof of stake swaps hardware for collateral. Validators lock up coins, and the protocol picks one to propose each block, weighted by how much they've staked. Behave and you earn. Cheat and the network destroys your deposit — that's <span class="k">slashing</span>. It's the same trick as mining, a scarce resource you'd lose by attacking, except the resource is money rather than energy. Ethereum switched in 2022 and dropped its energy use by about 99.95%.</p>
+      ${obj("Switch the live network to proof of stake and watch the energy meter collapse.")}
+      ${w("Consensus engine", `<div class="btn-row"><button class="btn" id="w8pow">Proof of work</button><button class="btn primary" id="w8pos">Proof of stake</button></div>
+        <div class="srow" style="margin-top:13px"><span class="nm">Energy</span><div style="flex:1;height:16px;background:rgba(255,255,255,.08);border-radius:7px;overflow:hidden"><i id="w8en" style="display:block;height:100%;width:100%;background:var(--gold);transition:width .7s,background .7s"></i></div><span class="v" id="w8env" style="color:var(--gold)">100%</span></div>`)}
+      <p class="sub">Where it goes from here</p>
+      <p class="p">Everything ahead is built from the parts you just used. <b>Rollups</b> bundle thousands of transactions and post a single proof to the main chain; <b>zero-knowledge proofs</b> let that proof reveal nothing but its own validity. <b>Smart contracts</b> turn the ledger into a programmable platform. <b>Tokenization</b> puts real assets — treasuries, property — on-chain. <b>Central bank digital currencies</b> do the reverse of all this: one issuer, total control. And regulation, from the EU's MiCA to India's tax regime, decides how much of it ever reaches you.</p>
+      <div class="aside"><div class="h">You ran the whole thing</div>A shared ledger, hashed and chained, signed transactions, mining, forks, the 51% line, and stake. The point was never the coin. It was getting strangers to agree on one history with no one in charge.</div>`; },
+    enter(ctx) { if (!C.state.running) C.play(); C.setSpeed(2);
+      const set = (v, col) => { $("#w8en").style.width = v + "%"; $("#w8en").style.background = col; $("#w8env").textContent = v < 1 ? "~0%" : v + "%"; $("#w8env").style.color = col; };
+      $("#w8pow").onclick = () => { C.setMode("pow"); $("#w8pow").className = "btn primary"; $("#w8pos").className = "btn"; set(100, "var(--gold)"); };
+      $("#w8pos").onclick = () => { C.setMode("pos"); $("#w8pos").className = "btn primary"; $("#w8pow").className = "btn"; set(0.5, "var(--green)"); V.toast("Now running proof of stake. No hashing."); ctx.done(); };
+      $("#w8pow").className = "btn"; }});
 
   /* ---- shell ---- */
-  function renderProg() {
-    const p = $("#railProg"); p.innerHTML = "";
-    CH.forEach((c, i) => { const s = el("div", "seg" + (done.has(c.id) ? " done" : (i === idx ? " cur" : ""))); p.appendChild(s); });
+  function renderRail() {
+    const r = $("#rail"); r.innerHTML = `<div class="rail-kicker">The journey</div>`;
+    CH.forEach((c, i) => {
+      const node = document.createElement("div");
+      node.className = "chap" + (i === idx ? " cur" : "") + (done.has(c.id) ? " done" : "");
+      node.innerHTML = `${i < CH.length - 1 ? '<div class="rail-line"></div>' : ''}<div class="ix">${done.has(c.id) ? "✓" : i + 1}</div><div class="tx"><div class="t">${c.title}</div><div class="s">${c.sub}</div></div>`;
+      node.onclick = () => go(i); r.appendChild(node);
+    });
   }
   function go(i) {
     if (CH[idx] && CH[idx].exit) try { CH[idx].exit(); } catch (e) {}
     cleanups.forEach(fn => { try { fn(); } catch (e) {} }); cleanups = [];
-    V.clearHighlight();
     idx = Math.max(0, Math.min(CH.length - 1, i));
     const c = CH[idx];
-    $("#railCh").textContent = c.label; $("#railTitle").textContent = c.title;
-    const body = $("#railBody"); body.innerHTML = c.body(); body.scrollTop = 0; body.classList.remove("fadein"); void body.offsetWidth; body.classList.add("fadein");
+    $("#narrKick").textContent = c.kick; $("#narrTitle").textContent = c.title;
+    const body = $("#narrBody"); body.innerHTML = c.body(); body.scrollTop = 0; body.classList.remove("fadein"); void body.offsetWidth; body.classList.add("fadein");
     $("#gPrev").disabled = idx === 0;
-    const nx = $("#gNext"); nx.disabled = idx === CH.length - 1; nx.classList.toggle("ready", done.has(c.id));
-    const ctx = { done: () => { if (!done.has(c.id)) { done.add(c.id); renderProg(); $("#gNext").classList.add("ready"); } } };
-    try { c.enter && c.enter(ctx); } catch (e) { console.error("chapter enter", c.id, e); }
-    renderProg();
+    const nx = $("#gNext"); nx.disabled = idx === CH.length - 1; nx.textContent = idx === CH.length - 1 ? "Done" : "Next"; nx.classList.toggle("ready", done.has(c.id));
+    const ctx = { done: () => { if (!done.has(c.id)) { done.add(c.id); renderRail(); $("#gNext").classList.add("ready"); const o = $("#theObjective"); if (o) { o.classList.add("done"); o.querySelector(".l").textContent = "Done"; } } } };
+    try { c.enter && c.enter(ctx); } catch (e) { console.error("enter", c.id, e); }
+    renderRail();
   }
-  function init() {
-    $("#gPrev").onclick = () => go(idx - 1);
-    $("#gNext").onclick = () => go(idx + 1);
-    go(0);
-  }
+  function init() { $("#gPrev").onclick = () => go(idx - 1); $("#gNext").onclick = () => go(idx + 1); renderRail(); go(0); }
   return { init, go, CH };
 })();

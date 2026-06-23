@@ -3,82 +3,75 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Blockchain Live · Operate a real blockchain, learn how it works</title>
-  <link rel="stylesheet" href="css/app.css?v=4" />
+  <title>Blockchain — a live, interactive primer</title>
+  <link rel="stylesheet" href="css/app.css?v=7" />
 </head>
 <body>
+  <!-- ===== cinematic hero ===== -->
+  <div id="hero">
+    <canvas id="heroCanvas"></canvas>
+    <div class="hero-in">
+      <div class="hero-eyebrow">An interactive primer</div>
+      <h1 class="hero-title">Blockchain,<br>made <em>legible</em>.</h1>
+      <p class="hero-sub">Most explanations hand you metaphors. This hands you a real network — mining real blocks, settling real signatures — and walks you through every layer while it runs.</p>
+      <button class="hero-cta" id="heroStart">Enter the network →</button>
+      <div class="hero-foot">No accounts, nothing to install. Built for the curious and the technical alike.</div>
+    </div>
+  </div>
+
   <div id="app">
-    <!-- ===== TOP BAR ===== -->
+    <!-- ===== top bar ===== -->
     <header id="topbar">
       <div class="brand">
-        <div class="logo">
-          <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.6" stroke="#fff" stroke-width="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6" stroke="#fff" stroke-width="1.6"/><path d="M10 6.5h2.5A1.5 1.5 0 0 1 14 8v6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>
-        </div>
-        <div><div class="t">Blockchain Live</div><div class="live"><span class="dot"></span>NETWORK RUNNING</div></div>
+        <div class="mk"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.6" stroke="#fff" stroke-width="1.7"/><rect x="14" y="14" width="7" height="7" rx="1.6" stroke="#fff" stroke-width="1.7"/><path d="M10 6.5h2.5A1.5 1.5 0 0 1 14 8v6" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+        <div><div class="t">Blockchain</div><div class="live"><span class="d"></span>LIVE NETWORK</div></div>
       </div>
-
       <div class="stats">
-        <div class="stat"><div class="l">Height</div><div class="v brand" id="stHeight">#0</div></div>
-        <div class="stat"><div class="l">Hashrate</div><div class="v amber" id="stHps">0 H/s</div></div>
-        <div class="stat"><div class="l">Difficulty</div><div class="v" id="stDiff">4 zeros</div></div>
-        <div class="stat"><div class="l">Avg block</div><div class="v" id="stTime">—</div></div>
-        <div class="stat"><div class="l">Mempool</div><div class="v" id="stMempool">0</div></div>
-        <div class="stat"><div class="l">Energy</div><div class="v green" id="stEnergy">100%</div></div>
+        <div class="stat"><div class="l">Height</div><div class="v vi" id="stHeight">#0</div></div>
+        <div class="stat"><div class="l">Hashrate</div><div class="v go" id="stHps">0/s</div></div>
+        <div class="stat"><div class="l">Difficulty</div><div class="v" id="stDiff">4</div></div>
+        <div class="stat"><div class="l">Block time</div><div class="v" id="stTime">—</div></div>
+        <div class="stat"><div class="l">Mempool</div><div class="v gr" id="stMem">0</div></div>
       </div>
-
       <div class="netctrl">
-        <div class="speedseg" id="speedSeg"><button data-s="0.5">0.5×</button><button data-s="1" class="on">1×</button><button data-s="2">2×</button><button data-s="4">4×</button></div>
-        <button class="iconbtn" id="ctrlStep" title="Mine one block">⏭</button>
-        <button class="iconbtn on" id="ctrlPlay" title="Play/Pause (space)">⏸</button>
+        <div class="seg" id="speedSeg"><button data-s="0.5">0.5×</button><button data-s="1" class="on">1×</button><button data-s="2">2×</button><button data-s="4">4×</button></div>
+        <button class="ibtn" id="ctrlStep" title="Mine one block">⏭</button>
+        <button class="ibtn on" id="ctrlPlay" title="Play / pause — spacebar">⏸</button>
       </div>
     </header>
 
-    <!-- ===== STAGE: the living blockchain ===== -->
+    <!-- ===== chapter rail (built by guide.js) ===== -->
+    <aside id="rail"></aside>
+
+    <!-- ===== stage: the living network ===== -->
     <section id="stage">
-      <div class="stage-scroll">
-        <div class="miners" id="minersStrip"></div>
-        <div class="spotlight"><span class="lab">Mining</span><span class="h" id="spotHash"></span><span class="tgt" id="spotNonce"></span></div>
+      <canvas id="netCanvas"></canvas>
+      <div class="stage-inner">
+        <div class="spotlight"><span class="lab">Mining</span><span class="h" id="spotHash"></span><span class="meta" id="spotMeta"></span></div>
         <div class="chain-wrap"><div class="chain-scroll" id="chainScroll"></div></div>
         <div class="mempool">
-          <div class="mp-head"><span class="t">Mempool</span><span class="ct" id="mpCount">0 pending</span><span class="muted small" style="margin-left:auto">highest fee gets mined first →</span></div>
+          <div class="mh"><span class="t">Mempool</span><span class="ct"><span id="mpCount">0</span> pending</span><span class="hint">highest fee is mined first →</span></div>
           <div class="mp-chips" id="mpChips"></div>
         </div>
       </div>
-
-      <!-- block inspector drawer -->
       <aside id="inspector">
-        <div class="insp-head"><span class="t">Block inspector</span><button class="iconbtn" id="inspClose">✕</button></div>
-        <div class="insp-body" id="inspBody"></div>
+        <div class="ih"><span class="t" id="ibTitle">Block</span><button class="ibtn" id="ibClose">✕</button></div>
+        <div class="ib" id="ib"></div>
       </aside>
-
-      <!-- splash -->
-      <div id="splash">
-        <h1>You're about to run a blockchain.</h1>
-        <p>Not slides — a live Proof-of-Work network with real hashing and real signatures. Build an identity, send money, mine blocks, trigger forks, and attack it. A guide on the right teaches every layer as you operate it.</p>
-        <div class="splash-mini-chain"><span class="b" style="animation-delay:0s"></span><span class="b" style="animation-delay:.2s"></span><span class="b" style="animation-delay:.4s"></span><span class="b" style="animation-delay:.6s"></span><span class="b" style="animation-delay:.8s"></span></div>
-        <button class="btn primary lg" id="splashStart" style="font-size:16px;padding:15px 30px">Enter the network →</button>
-      </div>
     </section>
 
-    <!-- ===== GUIDE RAIL ===== -->
-    <aside id="rail">
-      <div class="rail-head">
-        <div class="rail-prog" id="railProg"></div>
-        <div class="rail-ch" id="railCh"></div>
-        <div class="rail-title" id="railTitle"></div>
-      </div>
-      <div class="rail-body" id="railBody"></div>
-      <div class="rail-foot">
-        <button class="navbtn" id="gPrev">← Back</button>
-        <button class="navbtn next" id="gNext">Next →</button>
-      </div>
+    <!-- ===== narration ===== -->
+    <aside id="narr">
+      <div class="narr-head"><div class="narr-ch" id="narrKick"></div><div class="narr-title" id="narrTitle"></div></div>
+      <div class="narr-body" id="narrBody"></div>
+      <div class="narr-foot"><button class="nav" id="gPrev">← Back</button><button class="nav next" id="gNext">Next</button></div>
     </aside>
   </div>
 
-  <script src="js/sha256.js?v=3"></script>
-  <script src="js/chain.js?v=3"></script>
-  <script src="js/viz.js?v=3"></script>
-  <script src="js/guide.js?v=3"></script>
-  <script src="js/app.js?v=3"></script>
+  <script src="js/sha256.js?v=7"></script>
+  <script src="js/chain.js?v=7"></script>
+  <script src="js/viz.js?v=7"></script>
+  <script src="js/guide.js?v=7"></script>
+  <script src="js/app.js?v=7"></script>
 </body>
 </html>

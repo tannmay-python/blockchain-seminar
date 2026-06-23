@@ -190,7 +190,15 @@ window.CHAIN = (function () {
     if (!state.running) return;
     const t0 = performance.now();
     if (state.mode === "pow") {
-      const batch = Math.round(900 * state.speed);
+      // Scale work to elapsed wall-time so block time stays consistent
+      // regardless of how often the timer actually fires (tab throttling, slow CPU).
+      const nowp = performance.now();
+      let raw = (nowp - state._lastTs) / 1000;
+      if (!(raw > 0)) raw = 0.016;
+      state._lastTs = nowp;
+      const dt = Math.min(raw, 0.5);                      // bound batch after a stall
+      const targetRate = 62000 * state.speed;            // hashes/sec target
+      const batch = Math.min(28000, Math.max(300, Math.round(targetRate * dt)));
       let found = false, finder = null;
       for (let i = 0; i < batch; i++) {
         state._nonce++; state._tpl.nonce = state._nonce; state.stats.hashes++;
@@ -198,9 +206,8 @@ window.CHAIN = (function () {
         if (i === batch - 1) state._winnerPreview = h;
         if (h.startsWith(target())) { found = true; finder = pickFinder(); break; }
       }
-      // hashrate estimate
-      const dt = (performance.now() - state._lastTs) / 1000; state._lastTs = performance.now();
-      if (dt > 0) state.stats.hps = state.stats.hps * 0.8 + (batch / dt) * 0.2;
+      const realRate = batch / raw;                       // honest hashrate
+      state.stats.hps = state.stats.hps ? state.stats.hps * 0.7 + realRate * 0.3 : realRate;
       emit("tick", { nonce: state._nonce, preview: state._winnerPreview, hps: state.stats.hps });
       if (found) finalizeBlock(finder);
     } else { // PoS: choose proposer by stake every ~targetBlockTime
