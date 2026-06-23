@@ -41,10 +41,22 @@
 
     $("#heroStart").onclick = () => { $("#hero").classList.add("gone"); if (!C.state.running) C.play(); setTimeout(() => { $("#hero").style.display = "none"; if (stopHero) stopHero(); }, 850); };
 
+    // presentation mode (larger text) + fullscreen — for projecting in a room
+    const togglePresent = () => { const on = $("#app").classList.toggle("present"); $("#ctrlPresent").classList.toggle("on", on); };
+    $("#ctrlPresent").onclick = togglePresent;
+    const toggleFull = () => { if (!document.fullscreenElement) (document.documentElement.requestFullscreen && document.documentElement.requestFullscreen()); else document.exitFullscreen && document.exitFullscreen(); };
+    $("#ctrlFull").onclick = toggleFull;
+
+    // keyboard: drive the talk like slides
     window.addEventListener("keydown", (e) => {
       if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) return;
       if (e.key === " ") { e.preventDefault(); C.state.running ? C.pause() : C.play(); }
-      if (e.key === "Escape") V.closeInspector();
+      else if (e.key === "Escape") V.closeInspector();
+      else if (e.key === "ArrowRight" || e.key === "PageDown") { $("#gNext").click(); }
+      else if (e.key === "ArrowLeft" || e.key === "PageUp") { $("#gPrev").click(); }
+      else if (e.key >= "1" && e.key <= "8") { G.go(+e.key - 1); }
+      else if (e.key.toLowerCase() === "p") { togglePresent(); }
+      else if (e.key.toLowerCase() === "f") { toggleFull(); }
     });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
