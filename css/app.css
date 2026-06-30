@@ -314,6 +314,45 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px;
 .minebar { height: 8px; border-radius: 99px; background: var(--surface-3); overflow: hidden; margin-top: 4px; }
 .minebar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-2)); width: 0; transition: width .1s; }
 
+/* ===== merkle computation tree ===== */
+.mvz { position: relative; padding: 6px 0; overflow-x: auto; }
+.mvz-rows { display: flex; flex-direction: column; gap: 30px; align-items: center; position: relative; z-index: 1; min-width: max-content; margin: 0 auto; }
+.mvz-row { display: flex; gap: 14px; justify-content: center; }
+.mvz-node { background: var(--surface); border: 1.5px solid var(--line-2); border-radius: 11px; padding: 7px 9px; font-family: var(--mono); font-size: 11px; text-align: center; min-width: 76px; transition: opacity .3s, border-color .25s, box-shadow .25s, transform .25s; box-shadow: var(--sh-sm); }
+.mvz-node .lbl { font-size: 9.5px; color: var(--ink-3); margin-bottom: 3px; font-family: var(--sans); font-weight: 600; }
+.mvz-node.leaf { border-color: rgba(98,13,60,.28); }
+.mvz-node.ghost { opacity: .3; border-style: dashed; }
+.mvz-node.active { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); transform: scale(1.06); }
+.mvz-node.root { border-color: var(--gold); background: var(--gold-tint); color: var(--gold-2); font-weight: 700; }
+.mvz svg { position: absolute; inset: 0; z-index: 0; pointer-events: none; width: 100%; height: 100%; }
+.mvz-formula { font-family: var(--mono); font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; text-align: center; color: var(--ink-2); margin-top: 16px; line-height: 1.5; }
+.mvz-formula b { color: var(--gold-2); } .mvz-formula .hl { color: var(--plum); }
+.mvz.compact .mvz-rows { gap: 18px; } .mvz.compact .mvz-node { min-width: 56px; padding: 5px 7px; font-size: 10px; } .mvz.compact .mvz-node .lbl { font-size: 8.5px; }
+
+/* ===== nonce: static fields vs the one dial ===== */
+.nfields { display: flex; flex-direction: column; gap: 8px; }
+.nfield { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 11px; padding: 11px 14px; }
+.nfield .ico { font-size: 15px; flex: 0 0 auto; opacity: .6; }
+.nfield .nf-k { font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 700; width: 96px; flex: 0 0 auto; }
+.nfield .nf-v { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); word-break: break-all; flex: 1; }
+.nfield .tag { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: var(--surface-3); color: var(--ink-3); flex: 0 0 auto; }
+.nfield.locked { opacity: .82; }
+.nfield.dial { background: var(--gold-tint); border: 2px solid var(--gold); }
+.nfield.dial .nf-k, .nfield.dial .ico { color: var(--gold-2); opacity: 1; }
+.nfield.dial .nf-v { color: var(--gold-2); font-weight: 700; font-size: 20px; }
+.nfield.dial .tag { background: var(--gold); color: #4a2c00; }
+.nfield.spin .nf-v { animation: flick .1s infinite; }
+.nfield.hashout-row { background: #2a1020; border-color: #4a2436; }
+.nfield.hashout-row .nf-k { color: #c89bb0; } .nfield.hashout-row .nf-v { color: #79e0c0; font-weight: 600; } .nfield.hashout-row .ico { opacity: 1; }
+.nfield.hashout-row .nf-v .go { color: #ffd479; font-weight: 700; }
+.arrowdown { text-align: center; color: var(--ink-3); font-family: var(--mono); font-size: 12px; margin: 4px 0; }
+
+/* ===== chain link tracing ===== */
+.xblock .xprev.lit .xv, .xblock .xseal.lit .sv { color: var(--gold-2) !important; background: var(--gold-soft); border-radius: 5px; padding: 1px 4px; }
+.xblock.traced { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-soft); }
+.linkmsg { text-align: center; font-size: 13.5px; color: var(--ink-2); margin-top: 12px; min-height: 20px; }
+.linkmsg b { color: var(--gold-2); }
+
 footer { text-align: center; padding: 56px 24px; color: var(--ink-4); font-size: 13px; }
 .hero-full { min-height: 100vh; }
 .fadein { animation: fadein .5s ease; } @keyframes fadein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }

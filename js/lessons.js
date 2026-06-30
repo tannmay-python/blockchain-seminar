@@ -21,12 +21,12 @@ window.LESSONS = (function () {
     const hh = (b, prev) => sha256(bodyOf(b) + prev + b.nonce);
     let blocks = opt.blocks.map(b => ({ data: b.data, txs: b.txs ? b.txs.slice() : null }));
     let prev = GEN; blocks.forEach(b => { b.nonce = 0; while (!hh(b, prev).startsWith("0".repeat(diff))) b.nonce++; b.prev = prev; b.hash = hh(b, prev); prev = b.hash; });
-    const wrap = el("div", ""); wrap.innerHTML = `<div class="xchain" id="xc"></div>`; host.appendChild(wrap);
+    const wrap = el("div", ""); wrap.innerHTML = `<div class="xchain" id="xc"></div>${opt.trace ? `<div class="linkmsg" id="lm">👆 Click any block to see how it locks onto the one before it.</div>` : ""}`; host.appendChild(wrap);
     const valid = (i) => { const b = blocks[i], rp = i === 0 ? GEN : blocks[i - 1].hash; return b.prev === rp && hh(b, b.prev).startsWith("0".repeat(diff)) && b.hash === hh(b, b.prev); };
     function render(freshIdx) {
       const c = wrap.querySelector("#xc"); c.innerHTML = "";
       blocks.forEach((b, i) => { const ok = valid(i), cur = hh(b, b.prev);
-        const node = el("div", "xblock" + (ok ? "" : " bad") + (i === freshIdx ? " fresh" : ""));
+        const node = el("div", "xblock" + (ok ? "" : " bad") + (i === freshIdx ? " fresh" : "")); node.dataset.i = i;
         const txsHtml = b.txs ? `<div class="xtxs">${b.txs.map(t => `<div class="xtx">${t}</div>`).join("")}</div>` : (opt.editable ? `<textarea class="xdata" data-i="${i}" rows="2">${(b.data || "").replace(/</g, "&lt;")}</textarea>` : `<div class="xv">${b.data || ""}</div>`);
         node.innerHTML = `<div class="xtop"></div><div class="xpad">
           <div class="xh"><span class="xn">#${i}</span><span class="xs">${ok ? "sealed" : "broken"}</span></div>
@@ -42,6 +42,17 @@ window.LESSONS = (function () {
         c.querySelectorAll("textarea[data-i]").forEach(t => t.oninput = () => { const i = +t.dataset.i; blocks[i].data = t.value; blocks[i].hash = hh(blocks[i], blocks[i].prev); render(); const tt = wrap.querySelector(`textarea[data-i="${i}"]`); if (tt) tt.focus(); });
         c.querySelectorAll("button[data-mine]").forEach(btn => btn.onclick = () => { let i = +btn.dataset.mine, p = i === 0 ? GEN : blocks[i - 1].hash; for (let j = i; j < blocks.length; j++) { blocks[j].prev = p; blocks[j].nonce = 0; while (!hh(blocks[j], p).startsWith("0".repeat(diff))) blocks[j].nonce++; blocks[j].hash = hh(blocks[j], p); p = blocks[j].hash; } render(); });
       }
+      if (opt.trace) {
+        c.querySelectorAll(".xblock").forEach(node => node.onclick = () => {
+          c.querySelectorAll(".lit").forEach(e => e.classList.remove("lit")); c.querySelectorAll(".traced").forEach(e => e.classList.remove("traced"));
+          const i = +node.dataset.i, lm = wrap.querySelector("#lm");
+          if (i === 0) { node.classList.add("traced"); lm.innerHTML = "This is the <b>genesis</b> block — the very first one. It has no previous block, so the chain starts here."; return; }
+          const prevNode = c.querySelector(`.xblock[data-i="${i - 1}"]`);
+          node.querySelector(".xprev").classList.add("lit"); node.classList.add("traced");
+          prevNode.querySelector(".xseal").classList.add("lit"); prevNode.classList.add("traced");
+          lm.innerHTML = `Block <b>#${i}</b>'s “prev” field is <b>exactly</b> Block <b>#${i - 1}</b>'s fingerprint (both highlighted). Copy any of those digits in your head — they match. <i>That shared value is the link.</i>`;
+        });
+      }
       if (freshIdx != null) c.scrollLeft = c.scrollWidth;
     }
     render();
@@ -53,11 +64,46 @@ window.LESSONS = (function () {
         if (blocks.length) { const conn = el("div", "xconn"); conn.innerHTML = `<div class="ln"></div>`; c.appendChild(conn); }
         const ph = el("div", "xblock mining"); ph.innerHTML = `<div class="xtop"></div><div class="xpad"><div class="xh"><span class="xn">#${blocks.length}</span><span class="xs">mining…</span></div><div class="xseg"><div class="xlbl">data</div><div class="xv">${data}</div></div><div class="xseg xnonce"><span class="xlbl" style="margin:0">nonce</span><span class="v" id="phn">0</span></div><div class="xseal"><span class="lk">🔓</span><span class="sv" id="phh"></span></div></div>`;
         c.appendChild(ph); c.scrollLeft = c.scrollWidth;
-        const tick = () => { for (let i = 0; i < 130; i++) { if (hh(tmp, p).startsWith("0".repeat(diff))) { tmp.prev = p; tmp.hash = hh(tmp, p); blocks.push(tmp); render(blocks.length - 1); if (onDone) onDone(); return; } tmp.nonce++; } ph.querySelector("#phn").textContent = fmt(tmp.nonce); ph.querySelector("#phh").textContent = short(hh(tmp, p), 10, 6); setTimeout(tick, 16); };
+        const tick = () => { if (!document.contains(wrap)) return; for (let i = 0; i < 130; i++) { if (hh(tmp, p).startsWith("0".repeat(diff))) { tmp.prev = p; tmp.hash = hh(tmp, p); blocks.push(tmp); render(blocks.length - 1); if (onDone) onDone(); return; } tmp.nonce++; } ph.querySelector("#phn").textContent = fmt(tmp.nonce); ph.querySelector("#phh").textContent = short(hh(tmp, p), 10, 6); setTimeout(tick, 16); };
         setTimeout(tick, 16);
       },
       count() { return blocks.length; }
     };
+  }
+
+  /* merkle tree builder — shows each pair of hashes combining up to the root */
+  function merkleViz(host, txs, opts) {
+    opts = opts || {}; const compact = !!opts.compact;
+    let levels = [], cur = txs.map(t => ({ hash: sha256(t), label: t, kids: null }));
+    levels.push(cur);
+    while (cur.length > 1) { const nx = []; for (let i = 0; i < cur.length; i += 2) { const a = cur[i], b = cur[i + 1] || cur[i]; nx.push({ hash: sha256(a.hash + b.hash), kids: [a, b] }); } levels.push(nx); cur = nx; }
+    const parents = levels.slice(1).reduce((a, lv) => a.concat(lv), []);
+    let built = compact ? parents.length : 0;
+    const wrap = el("div", compact ? "" : "fcard");
+    wrap.innerHTML = (compact ? "" : `<div class="flabel"><span class="pin"></span>how the merkle root is built</div>`) +
+      `<div class="mvz${compact ? " compact" : ""}"><svg></svg><div class="mvz-rows"></div></div>` +
+      (compact ? "" : `<div class="mvz-formula">Each pair of fingerprints gets hashed into one parent. Build it one step at a time.</div><div class="btn-row" style="justify-content:center;margin-top:12px"><button class="btn primary" id="mvs">Combine next pair ▶</button><button class="btn" id="mva">Build it all</button><button class="btn" id="mvr">Reset</button></div>`);
+    host.appendChild(wrap);
+    const rowsEl = wrap.querySelector(".mvz-rows"), svg = wrap.querySelector("svg"), mvz = wrap.querySelector(".mvz");
+    const isBuilt = (n) => { const i = parents.indexOf(n); return i < 0 || i < built; };
+    function render() {
+      rowsEl.innerHTML = "";
+      levels.forEach((lv, li) => { const row = el("div", "mvz-row"); lv.forEach(node => { const isLeaf = li === 0, isRoot = li === levels.length - 1, shown = isLeaf || isBuilt(node), active = !compact && built > 0 && node === parents[built - 1];
+        const n = el("div", "mvz-node" + (isLeaf ? " leaf" : "") + (isRoot && shown ? " root" : "") + (shown ? "" : " ghost") + (active ? " active" : ""));
+        n.innerHTML = (isLeaf ? `<div class="lbl">${node.label}</div>` : isRoot ? `<div class="lbl">${shown ? "MERKLE ROOT" : "root"}</div>` : "") + (shown ? short(node.hash, 5, 3) : "?"); node._el = n; row.appendChild(n); }); rowsEl.appendChild(row); });
+      requestAnimationFrame(drawLines); setTimeout(drawLines, 180);
+    }
+    function drawLines() { const box = mvz.getBoundingClientRect(); svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`); svg.innerHTML = "";
+      levels.forEach((lv, li) => { if (!li) return; lv.forEach(node => { if (!isBuilt(node) || !node.kids) return; const pr = node._el.getBoundingClientRect(), px = pr.left + pr.width / 2 - box.left, py = pr.top - box.top, active = !compact && node === parents[built - 1];
+        node.kids.forEach(kid => { if (!kid._el) return; const kr = kid._el.getBoundingClientRect(), kx = kr.left + kr.width / 2 - box.left, ky = kr.bottom - box.top; const ln = document.createElementNS("http://www.w3.org/2000/svg", "line"); ln.setAttribute("x1", kx); ln.setAttribute("y1", ky); ln.setAttribute("x2", px); ln.setAttribute("y2", py); ln.setAttribute("stroke", active ? "#f1a222" : "rgba(98,13,60,.22)"); ln.setAttribute("stroke-width", active ? "2.5" : "1.5"); svg.appendChild(ln); }); }); });
+    }
+    if (!compact) {
+      wrap.querySelector("#mvs").onclick = () => { if (built >= parents.length) return; built++; render(); const node = parents[built - 1]; wrap.querySelector(".mvz-formula").innerHTML = `SHA-256( <b>${short(node.kids[0].hash, 4, 0)}</b> + <b>${short(node.kids[1].hash, 4, 0)}</b> ) = <span class="hl">${short(node.hash, 5, 3)}</span>` + (built >= parents.length ? `<br>That last hash is the <b>Merkle root</b> — one fingerprint for all ${txs.length} transactions.` : ""); if (built >= parents.length) wrap.querySelector("#mvs").disabled = true; };
+      wrap.querySelector("#mva").onclick = () => { built = parents.length; render(); wrap.querySelector(".mvz-formula").innerHTML = `Every pair hashed up to one <b>Merkle root</b>: <span class="hl">${short(levels[levels.length - 1][0].hash, 7, 4)}</span>`; wrap.querySelector("#mvs").disabled = true; };
+      wrap.querySelector("#mvr").onclick = () => { built = 0; wrap.querySelector("#mvs").disabled = false; wrap.querySelector(".mvz-formula").innerHTML = "Each pair of fingerprints gets hashed into one parent. Build it one step at a time."; render(); };
+    }
+    render();
+    return { root: levels[levels.length - 1][0].hash };
   }
 
   /* drag-to-build + live-mine a single block */
@@ -67,9 +113,11 @@ window.LESSONS = (function () {
     const merk = (a) => { if (!a.length) return ""; let lvl = a.map(x => sha256(x)); while (lvl.length > 1) { const n = []; for (let i = 0; i < lvl.length; i += 2) n.push(sha256(lvl[i] + (lvl[i + 1] || lvl[i]))); lvl = n; } return lvl[0]; };
     const wrap = el("div", "fcard"); wrap.innerHTML = `<div class="flabel"><span class="pin"></span>build &amp; seal your own block</div>
       <div class="lab-grid"><div><div class="note" style="margin-bottom:8px">drag these in — or tap them →</div><div class="txpool" id="pool"></div></div>
-      <div><div id="slot"></div><button class="btn gold block" id="mine" style="margin-top:12px" disabled>⛏ Mine to seal it</button></div></div>`;
+      <div><div id="slot"></div><button class="btn gold block" id="mine" style="margin-top:12px" disabled>⛏ Mine to seal it</button></div></div>
+      <div id="mwrap" style="margin-top:20px;display:none"><div class="note" style="text-align:center;margin-bottom:6px">the one merkle root above is built by hashing your transactions together, in pairs:</div><div id="mslot"></div></div>`;
     host.appendChild(wrap);
     const poolEl = wrap.querySelector("#pool"), slot = wrap.querySelector("#slot"), mineBtn = wrap.querySelector("#mine");
+    function drawMerkle() { const mw = wrap.querySelector("#mwrap"), ms = wrap.querySelector("#mslot"); if (inB.length >= 2) { mw.style.display = "block"; ms.innerHTML = ""; merkleViz(ms, inB, { compact: true }); } else { mw.style.display = "none"; ms.innerHTML = ""; } }
     function drawPool() { poolEl.innerHTML = ""; pool.forEach(t => { const used = inB.includes(t); const chip = el("div", "txchip" + (used ? " used" : ""), `<span class="grip">⠿</span>${t}`); if (!used && !sealed) { chip.draggable = true; chip.ondragstart = e => { e.dataTransfer.setData("text/plain", t); chip.classList.add("dragging"); }; chip.ondragend = () => chip.classList.remove("dragging"); chip.onclick = () => add(t); } poolEl.appendChild(chip); }); }
     function drawBlock() { const root = inB.length ? merk(inB) : null;
       slot.innerHTML = `<div class="xblock${sealed ? " justsealed" : mining ? " mining" : ""}"><div class="xtop"></div><div class="xpad">
@@ -81,12 +129,12 @@ window.LESSONS = (function () {
       const dz = slot.querySelector("#dz"); if (!sealed && !mining) { dz.ondragover = e => { e.preventDefault(); dz.classList.add("over"); }; dz.ondragleave = () => dz.classList.remove("over"); dz.ondrop = e => { e.preventDefault(); dz.classList.remove("over"); add(e.dataTransfer.getData("text/plain")); }; }
       mineBtn.disabled = !inB.length || sealed || mining;
     }
-    function add(t) { if (sealed || mining || inB.includes(t) || !pool.includes(t)) return; inB.push(t); drawPool(); drawBlock(); }
+    function add(t) { if (sealed || mining || inB.includes(t) || !pool.includes(t)) return; inB.push(t); drawPool(); drawBlock(); drawMerkle(); }
     mineBtn.onclick = () => { if (!inB.length || sealed || mining) return; mining = true; drawBlock();
       let n = 0; const b = merk(inB) + "prev0";
-      const tick = () => { if (!mining && !sealed) return; for (let i = 0; i < 130; i++) { const h = sha256(b + n); if (h.startsWith("000")) { curHash = h; mining = false; sealed = true; drawPool(); drawBlock(); mineBtn.textContent = "✓ Sealed — it is now locked by its fingerprint"; return; } n++; } curHash = sha256(b + n); const mb = slot.querySelector("#mb"); if (mb) mb.style.width = Math.min(96, n / 4096 * 100) + "%"; const sv = slot.querySelector(".sv"); if (sv) sv.textContent = short(curHash, 10, 6); setTimeout(tick, 16); };
+      const tick = () => { if ((!mining && !sealed) || !document.contains(wrap)) return; for (let i = 0; i < 130; i++) { const h = sha256(b + n); if (h.startsWith("000")) { curHash = h; mining = false; sealed = true; drawPool(); drawBlock(); mineBtn.textContent = "✓ Sealed — it is now locked by its fingerprint"; return; } n++; } curHash = sha256(b + n); const mb = slot.querySelector("#mb"); if (mb) mb.style.width = Math.min(96, n / 4096 * 100) + "%"; const sv = slot.querySelector(".sv"); if (sv) sv.textContent = short(curHash, 10, 6); setTimeout(tick, 16); };
       setTimeout(tick, 16); };
-    drawPool(); drawBlock();
+    drawPool(); drawBlock(); drawMerkle();
   }
 
   const L = {};
@@ -195,7 +243,7 @@ window.LESSONS = (function () {
           wrap.querySelector("#kV").onclick = async () => { const m = wrap.querySelector("#kM").value; const ok = hasSubtle ? await subtle.verify({ name: "ECDSA", hash: "SHA-256" }, keys.publicKey, new Uint8Array(sig.match(/../g).map(h => parseInt(h, 16))), new TextEncoder().encode(m)) : sig === sha256(keys._p + m); ok ? setS("VALID — matches the message and the key.", "ok") : setS("REJECTED — the message was altered after signing.", "bad"); };
         } },
     ],
-    deeper: P("This is <b>ECDSA</b>, the same elliptic-curve signatures Bitcoin and Ethereum use. The trapdoor: your public key is a fixed point added to itself a secret number of times; going forward is fast, going back (the discrete-log problem) is hopeless. Signing covers the <b>hash</b> of the transaction, so it proves authenticity and integrity at once — and the verifier learns only ‘this key signed this’, never your secret. Lose the key and the coins freeze forever; copy it and the thief simply is you. <b>Policy hook:</b> there's no intermediary to pressure — so states regulate the exchanges, the one place an intermediary reappears.") };
+    deeper: P("This is <b>ECDSA</b>, the same elliptic-curve signatures Bitcoin and Ethereum use. The trapdoor: your public key is a fixed point added to itself a secret number of times; going forward is fast, going back (the discrete-log problem) is hopeless. Signing covers the <b>hash</b> of the transaction, so it proves authenticity and integrity at once — and the verifier learns only ‘this key signed this’, never your secret. Lose the key and the coins freeze forever; copy it and the thief simply is you.") };
 
   /* ===================== BUILDING THE CHAIN ===================== */
   L.block = { world: "chain", title: "A block", oneliner: "Build one, then seal it", icon: "▦",
@@ -208,15 +256,37 @@ window.LESSONS = (function () {
     ],
     deeper: P("Each transaction is hashed; pairs of hashes are combined and hashed again, up a tree, until one <b>Merkle root</b> remains in the header. Hashing the whole header gives the block its ID — its seal. A block on its own isn't special; anyone can build one. What makes <i>adding</i> it costly, and the past unchangeable, is the next two lessons: the nonce, and the chain.") };
 
-  L.nonce = { world: "chain", title: "The nonce", oneliner: "Proof of Work, by hand", icon: "⛏",
-    hero: "Adding a block has to be expensive, or rewriting history would be free. The cost is a guessing game.",
+  L.nonce = { world: "chain", title: "The nonce", oneliner: "The one dial in a frozen block", icon: "⛏",
+    hero: "A finished block is frozen — the transactions, the link, the time. A miner can change exactly one thing: a throwaway number called the nonce. Mining is just turning that one dial.",
     beats: [
-      { n: "01", h: "Roll a giant die", cap: "A hash is a random number in a huge range. A valid block needs one that lands in the tiny <b>target zone</b>. You can't aim — only re-roll.",
+      { n: "01", h: "Everything is locked but one number", cap: "Look at the block below. The data, the link to the last block, the merkle root, the time — all <b>fixed</b>. The miner is only allowed to change the <span class='k'>nonce</span>. Turn the dial and watch: only it and the hash move. Nothing else can.",
+        build(s) { let nonce = 0, auto = false; const F = { data: "Alice → Bob: 5 ; Carol → Dan: 2", prev: "0000a3f2c1b8…d41f", merkle: "9c1f7e44a2…b023", time: "14:02:51" };
+          const wrap = el("div", "fcard"); wrap.innerHTML = `<div class="flabel"><span class="pin"></span>one block · one moving part</div>
+            <div class="nfields">
+              <div class="nfield locked"><span class="ico">🔒</span><span class="nf-k">data</span><span class="nf-v">${F.data}</span><span class="tag">frozen</span></div>
+              <div class="nfield locked"><span class="ico">🔒</span><span class="nf-k">prev hash</span><span class="nf-v">${F.prev}</span><span class="tag">frozen</span></div>
+              <div class="nfield locked"><span class="ico">🔒</span><span class="nf-k">merkle root</span><span class="nf-v">${F.merkle}</span><span class="tag">frozen</span></div>
+              <div class="nfield locked"><span class="ico">🔒</span><span class="nf-k">timestamp</span><span class="nf-v">${F.time}</span><span class="tag">frozen</span></div>
+              <div class="nfield dial" id="dial"><span class="ico">🎲</span><span class="nf-k">nonce</span><span class="nf-v" id="nv">0</span><span class="tag">the only dial</span></div>
+            </div>
+            <div class="arrowdown">↓ hash all of it together ↓</div>
+            <div class="nfield hashout-row"><span class="ico">#</span><span class="nf-k">block hash</span><span class="nf-v" id="nh"></span></div>
+            <div class="btn-row" style="justify-content:center;margin-top:16px"><button class="btn gold" id="spin">Turn the dial · +1</button><button class="btn primary" id="fast">Spin fast</button><button class="btn" id="rst">Reset</button></div>
+            <div class="note" style="text-align:center;margin-top:10px">Four fields frozen, one dial turning. That single number is the miner's only freedom.</div>`;
+          s.appendChild(wrap); const body = F.data + F.prev + F.merkle + F.time;
+          const draw = () => { wrap.querySelector("#nv").textContent = fmt(nonce); wrap.querySelector("#nh").innerHTML = splitZ(sha256(body + nonce)); };
+          const dial = wrap.querySelector("#dial");
+          wrap.querySelector("#spin").onclick = () => { nonce++; dial.classList.add("spin"); draw(); setTimeout(() => dial.classList.remove("spin"), 150); };
+          wrap.querySelector("#rst").onclick = () => { auto = false; nonce = 0; dial.classList.remove("spin"); wrap.querySelector("#fast").textContent = "Spin fast"; draw(); };
+          wrap.querySelector("#fast").onclick = () => { if (auto) { auto = false; dial.classList.remove("spin"); wrap.querySelector("#fast").textContent = "Spin fast"; return; } auto = true; dial.classList.add("spin"); wrap.querySelector("#fast").textContent = "Stop"; const step = () => { if (!auto || !document.contains(wrap)) return; for (let i = 0; i < 35; i++) nonce++; draw(); setTimeout(step, 40); }; step(); };
+          draw();
+        } },
+      { n: "02", h: "Why turn it at all?", cap: "A hash is a random number in a huge range. A valid block needs one that lands in a tiny <b>target zone</b> near zero. You can't aim the hash — so you re-roll the dial until it happens to land there.",
         build(s) { const wrap = el("div", "fcard"); wrap.innerHTML = `<div class="flabel"><span class="pin"></span>below the target?</div><div style="position:relative;height:30px;border-radius:99px;background:var(--surface-3);border:1px solid var(--line);overflow:hidden;margin:10px 0"><div style="position:absolute;left:0;top:0;bottom:0;width:14%;background:var(--green-soft)"></div><div id="dieMark" style="position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:var(--plum);transform:translate(-50%,-50%);left:60%;transition:left .25s"></div></div><div style="display:flex;justify-content:space-between"><span class="note" style="color:var(--green)">◀ target zone (valid)</span><span class="note">too big ▶</span></div><div class="verdict no" id="dieV" style="margin-top:14px">roll to try</div><button class="btn gold block" id="dieGo" style="margin-top:12px">Roll</button>`;
           s.appendChild(wrap); let n = 0;
           wrap.querySelector("#dieGo").onclick = () => { n++; const h = sha256("roll" + n + Math.random()); const pos = parseInt(h.slice(0, 4), 16) / 65535; wrap.querySelector("#dieMark").style.left = (4 + pos * 92) + "%"; const win = pos < 0.14; const v = wrap.querySelector("#dieV"); if (win) { v.className = "verdict yes"; v.textContent = `Landed in the target zone — valid block! (roll ${n})`; } else { v.className = "verdict no"; v.textContent = `too big — re-roll (${n} tries)`; } };
         } },
-      { n: "02", h: "The nonce is the re-roll", cap: "You can't change the transactions, so you spin one throwaway number — the <span class='k'>nonce</span> — until the hash starts with enough zeros. Crank the difficulty and feel it get harder.",
+      { n: "03", h: "Crank the difficulty", cap: "The more leading zeros the network demands, the smaller the target, and the more times you have to spin the dial. Drag the difficulty up and watch the expected number of guesses explode.",
         build(s) { let diff = 4, nonce = 0, tries = 0, mining = false; const DATA = "block #42 · Alice→Bob 5", PREV = "0000a3f2c1";
           const wrap = el("div", "fcard"); wrap.innerHTML = `<div class="nonce-display"><span class="lab">current nonce</span><span id="nN">0</span></div><div class="hashout" id="nH" style="margin:16px 0;text-align:center"></div><div class="verdict no" id="nV" style="margin-bottom:16px"></div><div class="target-line">hash must start with <span class="t" id="nT">0000</span></div><div class="srow" style="margin:14px 0"><span class="nm">difficulty</span><input type="range" id="nD" min="1" max="5" value="4"><span class="v" id="nDv">4</span></div><div class="statline"><div class="s"><span class="n" id="nE">65,536</span><span class="l">expected tries</span></div><div class="s"><span class="n" id="nTr">0</span><span class="l">your tries</span></div></div><div class="btn-row" style="margin-top:16px;justify-content:center"><button class="btn gold" id="nTy">Spin once</button><button class="btn primary" id="nAu">Auto-mine</button><button class="btn" id="nR">Reset</button></div>`;
           s.appendChild(wrap); const tgt = () => "0".repeat(diff);
@@ -224,30 +294,34 @@ window.LESSONS = (function () {
           wrap.querySelector("#nD").oninput = (e) => { diff = +e.target.value; wrap.querySelector("#nDv").textContent = diff; wrap.querySelector("#nT").textContent = tgt(); wrap.querySelector("#nE").textContent = fmt(Math.pow(16, diff)); render(); };
           wrap.querySelector("#nTy").onclick = () => { if (mining) return; nonce++; tries++; render(); };
           wrap.querySelector("#nR").onclick = () => { mining = false; nonce = 0; tries = 0; wrap.querySelector("#nAu").textContent = "Auto-mine"; render(); };
-          wrap.querySelector("#nAu").onclick = () => { if (mining) { mining = false; wrap.querySelector("#nAu").textContent = "Auto-mine"; return; } mining = true; wrap.querySelector("#nAu").textContent = "Stop"; const step = () => { if (!mining) return; for (let i = 0; i < 1200; i++) { nonce++; tries++; if (sha256(DATA + PREV + nonce).startsWith(tgt())) { render(); mining = false; wrap.querySelector("#nAu").textContent = "Auto-mine"; return; } } render(); setTimeout(step, 0); }; setTimeout(step, 0); };
+          wrap.querySelector("#nAu").onclick = () => { if (mining) { mining = false; wrap.querySelector("#nAu").textContent = "Auto-mine"; return; } mining = true; wrap.querySelector("#nAu").textContent = "Stop"; const step = () => { if (!mining || !document.contains(wrap)) return; for (let i = 0; i < 1200; i++) { nonce++; tries++; if (sha256(DATA + PREV + nonce).startsWith(tgt())) { render(); mining = false; wrap.querySelector("#nAu").textContent = "Auto-mine"; return; } } render(); setTimeout(step, 0); }; setTimeout(step, 0); };
           render();
         } },
     ],
-    deeper: P("If <code>p = target / 2²⁵⁶</code> is the chance one hash qualifies, expected tries is <code>1/p</code>, and each extra zero of difficulty makes it 16× rarer (a hex digit has 16 values). Bitcoin runs about 10²³ hashes per block every ten minutes, re-tuning the target every two weeks to hold that pace. The winner mints new coins plus fees. The recurring theme: producing a block is staggeringly expensive, but <b>checking</b> it is a single hash. <b>Policy hook:</b> Proof of Work turns electricity into security, so mining migrates to the cheapest power — China's 2021 ban moved half the world's hashrate across borders in months.") };
+    deeper: P("If <code>p = target / 2²⁵⁶</code> is the chance one hash qualifies, expected tries is <code>1/p</code>, and each extra zero of difficulty makes it 16× rarer (a hex digit has 16 values). Bitcoin runs about 10²³ hashes per block every ten minutes, re-tuning the target every two weeks to hold that pace. The winner mints new coins plus fees. The recurring theme: producing a block is staggeringly expensive, but <b>checking</b> it is a single hash — that asymmetry is what makes the whole thing work.") };
 
   L.chainlink = { world: "chain", title: "The chain", oneliner: "Why the past locks", icon: "⛓",
-    hero: "Line the blocks up. Each one writes down the fingerprint of the block before it — and that's the chain.",
+    hero: "Line the blocks up. Each one writes down the fingerprint of the one before it — so the blocks are physically chained together by their own hashes.",
     beats: [
-      { n: "01", h: "Each block points back", cap: "See the arrows and the little hash on each link? Every block stores the previous block's seal in its <b>‘prev’</b> field. Mine a few more and watch each new link get sealed in real time.",
+      { n: "01", h: "Follow the link between two blocks", cap: "Here is the single most important idea in this whole course: a block's <b>‘prev’</b> field holds the <b>exact fingerprint</b> of the block before it. Click any block to light up the link and see the two matching values for yourself.",
+        build(s) { richChain(s, { blocks: [{ data: "Genesis block" }, { data: "Alice → Bob: 5" }, { data: "Carol → Dan: 2" }, { data: "Eve → Finn: 8" }], editable: false, diff: 3, trace: true }); } },
+      { n: "02", h: "Watch new links form", cap: "Every new block grabs the current tip's fingerprint, writes it into its own ‘prev’ field, and then gets mined to seal it. Mine a few and watch each fresh link snap into place.",
         build(s) { const c = richChain(s, { blocks: [{ data: "Genesis block" }, { data: "Alice → Bob: 5" }, { data: "Carol → Dan: 2" }], editable: false, diff: 3 });
           const row = el("div", "btn-row"); row.style.justifyContent = "center"; row.style.marginTop = "8px";
           const tx = ["Dan → Eve: 3", "Eve → Finn: 8", "Finn → Gail: 2", "Gail → Hank: 6", "Hank → Ivy: 1"]; let i = 0, busy = false;
           const b = el("button", "btn primary", "⛏ Mine the next block"); b.onclick = () => { if (busy) return; busy = true; b.disabled = true; b.textContent = "mining…"; c.mineNext(tx[i++ % tx.length], () => { busy = false; b.disabled = false; b.textContent = "⛏ Mine the next block"; }); }; row.appendChild(b); s.appendChild(row);
         } },
-      { n: "02", h: "Now try to rewrite the past", cap: "Edit a transaction in an old block. Its seal changes, the next ‘prev’ stops matching, and every link after it turns <b>red</b> — the tampering is visible to everyone, instantly.",
+      { n: "03", h: "Now try to rewrite the past", cap: "Edit a transaction in an old block. Its seal changes, so the next block's ‘prev’ no longer matches, and every link after it turns <b>red</b> — the tampering is visible to everyone, instantly.",
         build(s) { richChain(s, { blocks: [{ data: "Genesis" }, { data: "Alice → Bob: 5" }, { data: "Carol → Dan: 2" }, { data: "Eve → Finn: 8" }], editable: true, diff: 3 }); } },
     ],
     deeper: P("Changing the past doesn't just edit one block — it invalidates everything built on top, in plain view. To repair it you'd have to re-mine that block <i>and every block after it</i>, winning the whole Proof-of-Work race again, while the honest network keeps extending the real chain with all its power. Below 50% of the hashrate, you fall further behind every ten minutes. Fingerprints make tampering visible; work makes fixing it a race you lose. That combination is immutability.") };
 
   L.merkle = { world: "chain", title: "Merkle tree", oneliner: "Prove inclusion cheaply", icon: "⋔",
-    hero: "How does a phone confirm a payment without downloading the whole blockchain? A clever tree of hashes.",
+    hero: "A block can hold thousands of transactions, but its header has room for just one fingerprint. A Merkle tree squeezes them all into that single hash — and still lets you prove any one of them is inside.",
     beats: [
-      { n: "01", h: "Click a transaction to prove it", cap: "To prove one transaction is in a block of thousands, you only need a <b>handful</b> of sibling hashes along the path to the root — not the whole block.",
+      { n: "01", h: "Watch the root get built", cap: "We hash the transactions together <b>two at a time</b>, climbing a tree, until a single hash is left: the <b>Merkle root</b> that goes into the block header. Build it one pair at a time and watch each combination happen.",
+        build(s) { merkleViz(s, ["Alice→Bob", "Bob→Carol", "Carol→Dan", "Dan→Eve", "Eve→Finn", "Finn→Gail", "Gail→Hank", "Hank→Ivy"]); } },
+      { n: "02", h: "Now prove one is inside — cheaply", cap: "To prove one transaction is in a block of thousands, you only need a <b>handful</b> of sibling hashes along the path to the root — not the whole block.",
         build(s) { const txs = ["Alice→Bob", "Bob→Carol", "Carol→Dan", "Dan→Eve", "Eve→Finn", "Finn→Gail", "Gail→Hank", "Hank→Ivy"];
           let levels = []; let lvl = txs.map(t => ({ hash: sha256(t), label: t })); levels.push(lvl); while (lvl.length > 1) { const n = []; for (let i = 0; i < lvl.length; i += 2) { const a = lvl[i], b = lvl[i + 1] || lvl[i]; n.push({ hash: sha256(a.hash + b.hash) }); } levels.push(n); lvl = n; }
           const wrap = el("div", ""); wrap.innerHTML = `<div class="mtree2" id="mt"></div><div class="sig-state" id="mM" style="max-width:560px;margin:18px auto 0;text-align:center">Click any transaction at the bottom.</div>`; s.appendChild(wrap);
@@ -255,7 +329,7 @@ window.LESSONS = (function () {
           function render(sel) { const w = wrap.querySelector("#mt"); w.innerHTML = ""; const pr = sel >= 0 ? proof(sel) : null; for (let l = levels.length - 1; l >= 0; l--) { const row = el("div", "mrow"); levels[l].forEach((node, i) => { const isLeaf = l === 0, isRoot = l === levels.length - 1; let c = "mnode" + (isLeaf ? " leaf" : isRoot ? " root" : ""); if (pr) { if (pr.path.has(node.hash)) c += " path"; else if (pr.prf.has(node.hash)) c += " proof"; } const n = el("div", c, (isLeaf ? node.label + "<br>" : isRoot ? "ROOT<br>" : "") + short(node.hash, 5, 3)); if (isLeaf) n.onclick = () => { render(i); const sz = proof(i).prf.size; wrap.querySelector("#mM").innerHTML = `To prove <b>${txs[i]}</b> is in this block of ${txs.length}, supply just <b style="color:var(--gold-2)">${sz} gold hashes</b> and re-hash up the path to the root.`; }; row.appendChild(n); }); w.appendChild(row); } } render(-1);
         } },
     ],
-    deeper: P("The tree's height is <code>log₂(n)</code>, so a million transactions need ~20 sibling hashes, a billion ~30 — doubling the block adds just one hash to the proof. A fake sibling produces the wrong root, so the proof fails safely even from an untrusted source. <b>Policy hook:</b> immutability proves a record wasn't altered after entry — it says nothing about whether the entry was <i>true</i>. Garbage in, immutable garbage out: the sharp question for any ‘blockchain for transparency’ pitch.") };
+    deeper: P("The tree's height is <code>log₂(n)</code>, so a million transactions need ~20 sibling hashes, a billion ~30 — doubling the block adds just one hash to the proof. A fake sibling produces the wrong root, so the proof fails safely even from an untrusted source. This is what lets a phone wallet confirm a payment in milliseconds without ever downloading the chain.") };
 
   /* ===================== CONSENSUS ===================== */
   L.forks = { world: "consensus", title: "Forks", oneliner: "How nodes agree", icon: "⑂",

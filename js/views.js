@@ -29,9 +29,11 @@ window.VIEWS = (function () {
         <h1>Learn Blockchain<br>by <em>doing</em>.</h1>
         <div class="cta">
           <button class="btn primary lg" data-go="#/lesson/${startId}">${resume ? "Continue where you left off" : "Start exploring"} →</button>
+          ${done > 0 ? `<button class="btn lg ghost" id="restart">Start over</button>` : ""}
         </div></div>
       </section>`;
     wireGo();
+    const rb = document.getElementById("restart"); if (rb) rb.onclick = () => { if (confirm("Clear your progress and start from the beginning?")) { S.reset(); home(); } };
     if (window.APP) window.APP.heroCanvas();
   }
   function worldCard(w) {
